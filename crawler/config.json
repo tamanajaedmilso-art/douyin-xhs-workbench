@@ -25,15 +25,15 @@
   "thresholds": {
     "douyin": {
       "likes_min": 1000,
-      "comments_min": 50,
+      "comments_min": 0,
       "collections_min": 0,
       "shares_min": 0,
-      "play_count_min": 10000
+      "play_count_min": 0
     },
     "xiaohongshu": {
       "likes_min": 500,
-      "comments_min": 50,
-      "collections_min": 100
+      "comments_min": 0,
+      "collections_min": 0
     }
   },
   "max_results_per_keyword": 20,
