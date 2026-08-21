@@ -23,7 +23,7 @@ from utils import ensure_dirs, load_config, now_str, setup_logging
 
 
 def run_collection(config: Dict[str, Any], logger) -> List[Dict[str, Any]]:
-    """执行一次完整采集"""
+    """执行一次完整采集，按关键词/平台增量保存，避免长任务超时丢失进度"""
     storage = Storage(config.get("data_dir", "./data"))
     analyzer = ContentAnalyzer()
     category_map = config.get("category_map", {})
@@ -33,15 +33,26 @@ def run_collection(config: Dict[str, Any], logger) -> List[Dict[str, Any]]:
     keywords = config.get("keywords", [])
     max_per_keyword = config.get("max_results_per_keyword", 20)
 
+    def process_and_save(items: List[Dict[str, Any]], raw_kw: str, label: str):
+        for item in items:
+            item["category"] = category_map.get(raw_kw, "其他")
+        analyzer.batch_analyze(items)
+        added = storage.add_batch(items)
+        storage.save()
+        all_items.extend(items)
+        logger.info(f"[save] {label} 采集 {len(items)} 条，新增 {added} 条，累计 {len(storage.items)} 条")
+
     if "douyin" in platforms:
         scraper = DouyinScraper(config, logger)
         try:
             scraper.start()
             for kw in keywords:
-                items = scraper.search(kw, max_results=max_per_keyword)
-                for item in items:
-                    item["category"] = category_map.get(kw, "其他")
-                all_items.extend(items)
+                try:
+                    items = scraper.search(kw, max_results=max_per_keyword)
+                    process_and_save(items, kw, f"抖音-{kw}")
+                except Exception as e:
+                    logger.error(f"[douyin] 关键词「{kw}」采集异常: {e}")
+                    storage.save()
         finally:
             scraper.stop()
 
@@ -50,21 +61,16 @@ def run_collection(config: Dict[str, Any], logger) -> List[Dict[str, Any]]:
         try:
             scraper.start()
             for kw in keywords:
-                items = scraper.search(kw, max_results=max_per_keyword)
-                for item in items:
-                    item["category"] = category_map.get(kw, "其他")
-                all_items.extend(items)
+                try:
+                    items = scraper.search(kw, max_results=max_per_keyword)
+                    process_and_save(items, kw, f"小红书-{kw}")
+                except Exception as e:
+                    logger.error(f"[xiaohongshu] 关键词「{kw}」采集异常: {e}")
+                    storage.save()
         finally:
             scraper.stop()
 
-    # 结构拆解
-    analyzer.batch_analyze(all_items)
-
-    # 增量存储
-    added = storage.add_batch(all_items)
-    storage.save()
-
-    logger.info(f"本次采集完成：新增 {added} 条，本次获取 {len(all_items)} 条，累计 {len(storage.items)} 条")
+    logger.info(f"本次采集完成：本次获取 {len(all_items)} 条，累计 {len(storage.items)} 条")
     return all_items
 
 

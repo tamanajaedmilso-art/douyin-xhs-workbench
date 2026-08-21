@@ -983,10 +983,8 @@
     reader.onload = (e) => {
       try {
         let rows = [];
-        if (ext === 'csv') {
-          rows = parseCsv(reader.result);
-        } else if (ext === 'xlsx' || ext === 'xls') {
-          rows = parseXlsx(e.target.result);
+        if (ext === 'csv' || ext === 'xlsx' || ext === 'xls') {
+          rows = parseXlsx(e.target.result, ext === 'csv');
         } else {
           toast('仅支持 CSV/Excel 文件');
           input.value = '';
@@ -1006,11 +1004,7 @@
       }
       input.value = '';
     };
-    if (ext === 'csv') {
-      reader.readAsText(file);
-    } else {
-      reader.readAsArrayBuffer(file);
-    }
+    reader.readAsArrayBuffer(file);
   }
 
   function parseCsv(text) {
@@ -1049,9 +1043,11 @@
     return result;
   }
 
-  function parseXlsx(buffer) {
+  function parseXlsx(buffer, isCsv) {
     if (typeof XLSX === 'undefined') throw new Error('Excel 解析库未加载');
-    const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+    const opts = { type: 'array' };
+    if (isCsv) opts.type = 'string';
+    const workbook = XLSX.read(isCsv ? new TextDecoder().decode(new Uint8Array(buffer)) : new Uint8Array(buffer), opts);
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }).filter(r => r.some(c => c !== undefined && c !== ''));
     if (rows.length < 2) return [];

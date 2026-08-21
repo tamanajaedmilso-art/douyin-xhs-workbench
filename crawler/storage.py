@@ -17,7 +17,8 @@ class Storage:
         self.items_file = self.data_dir / "collected_items.json"
         self.seen_file = self.data_dir / "seen_urls.json"
         self.items: List[Dict[str, Any]] = load_json(str(self.items_file))
-        self.seen_urls: Dict[str, str] = load_json(str(self.seen_file))
+        raw_seen = load_json(str(self.seen_file))
+        self.seen_urls: Dict[str, str] = raw_seen if isinstance(raw_seen, dict) else {}
 
     def _url_hash(self, url: str) -> str:
         """对 URL 做哈希，作为去重 key"""
