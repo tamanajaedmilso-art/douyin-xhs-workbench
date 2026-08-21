@@ -1,5 +1,0 @@
-#!/bin/bash
-# 本地 Vercel CLI 启动脚本（项目自带 Node + Vercel）
-DIR="$(cd "$(dirname "$0")" && pwd)"
-export PATH="$DIR/.tools/node/bin:$DIR/.tools/vercel/bin:$PATH"
-exec vercel "$@"
