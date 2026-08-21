@@ -19,6 +19,7 @@ from analyzer import ContentAnalyzer
 from exporter import Exporter
 from scraper import DouyinScraper, XiaohongshuScraper
 from storage import Storage
+from sync import push_items, push_storage
 from utils import ensure_dirs, load_config, now_str, setup_logging
 
 
@@ -71,6 +72,15 @@ def run_collection(config: Dict[str, Any], logger) -> List[Dict[str, Any]]:
             scraper.stop()
 
     logger.info(f"本次采集完成：本次获取 {len(all_items)} 条，累计 {len(storage.items)} 条")
+
+    # 自动同步到后端
+    backend_cfg = config.get("backend", {})
+    if backend_cfg.get("auto_sync") and all_items:
+        if backend_cfg.get("url") and backend_cfg.get("api_key"):
+            push_items(all_items, config, logger)
+        else:
+            logger.warning("[sync] auto_sync 已开启但 backend.url 或 api_key 未配置，跳过同步")
+
     return all_items
 
 
@@ -166,6 +176,7 @@ def main():
     parser.add_argument("--export", action="store_true", help="导出已采集数据")
     parser.add_argument("--stats", action="store_true", help="查看采集统计")
     parser.add_argument("--schedule", action="store_true", help="启动定时每周采集")
+    parser.add_argument("--sync-only", action="store_true", help="只把本地已采集数据同步到后端")
     parser.add_argument("--format", choices=["csv", "xlsx", "both"], default="both", help="导出格式")
     parser.add_argument("--config", default="config.json", help="配置文件路径")
     args = parser.parse_args()
@@ -201,6 +212,9 @@ def main():
         show_stats(config, logger)
     elif args.schedule:
         run_scheduler(config, logger)
+    elif args.sync_only:
+        storage = Storage(config.get("data_dir", "./data"))
+        push_storage(storage, config, logger)
     else:
         parser.print_help()
 

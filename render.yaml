@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: douyin-xhs-workbench-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_KEY
+        generateValue: true
+      - key: DATA_DIR
+        value: /var/render/data
+    disk:
+      name: backend-data
+      mountPath: /var/render/data
+      sizeGB: 1

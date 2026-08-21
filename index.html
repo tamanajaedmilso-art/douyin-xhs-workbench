@@ -131,6 +131,9 @@
             <i data-lucide="database" class="w-4 h-4"></i> 导入采集数据
             <input type="file" class="hidden" accept=".csv,.xlsx,.xls" onchange="app.importCollectedData(this)">
           </label>
+          <button class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.syncFromBackend()">
+            <i data-lucide="cloud-download" class="w-4 h-4"></i> 同步后端
+          </button>
           <button class="btn-primary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.openWeeklyCollection()">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i> 每周爆款收录
           </button>
@@ -266,6 +269,29 @@
             <i data-lucide="upload" class="w-4 h-4"></i> 选择备份文件
             <input type="file" class="hidden" accept=".json" onchange="app.importAll(this)">
           </label>
+        </div>
+        <div class="border-t border-beige-200 pt-6">
+          <h3 class="font-bold text-stone-800 mb-2">后端同步设置</h3>
+          <p class="text-sm text-stone-500 mb-3">配置爬虫后端地址，网页可自动拉取最新采集的爆款数据。</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm text-stone-600 mb-1">后端地址</label>
+              <input id="backend-url" type="text" placeholder="https://your-backend.onrender.com" class="w-full rounded-xl px-3 py-2 text-sm" value="">
+            </div>
+            <div>
+              <label class="block text-sm text-stone-600 mb-1">API Key</label>
+              <input id="backend-api-key" type="password" placeholder="your-api-key" class="w-full rounded-xl px-3 py-2 text-sm" value="">
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="backend-auto-sync" type="checkbox" class="w-4 h-4 rounded border-stone-300 text-rose-500 focus:ring-rose-500">
+              <label for="backend-auto-sync" class="text-sm text-stone-600">进入「爆款模板」时自动同步</label>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn-primary px-5 py-2 rounded-xl text-sm font-medium" onclick="app.saveBackendConfig()">保存配置</button>
+              <button class="btn-secondary px-5 py-2 rounded-xl text-sm font-medium" onclick="app.syncFromBackend()">立即同步</button>
+            </div>
+            <p id="backend-status" class="text-xs text-stone-400"></p>
+          </div>
         </div>
         <div class="border-t border-beige-200 pt-6">
           <h3 class="font-bold text-stone-800 mb-2">危险操作</h3>
@@ -417,7 +443,9 @@
     templates: PREFIX + 'templates',
     scripts: PREFIX + 'scripts',
     drafts: PREFIX + 'drafts',
-    settings: PREFIX + 'settings'
+    settings: PREFIX + 'settings',
+    backend: PREFIX + 'backend_config',
+    lastSync: PREFIX + 'last_sync'
   };
 
   const BANNED_WORDS = ['最好','最佳','第一','顶级','国家级','特效','根治','无效退款','保证','绝对','100%','零风险','永久','立刻','马上','一针见效','神药','包治','秘方','纯天然无副作用','医美贷','整容贷'];
@@ -470,12 +498,15 @@
     { title: '备孕运动建议', hook: '[人群]别只会躺平，这3种运动更助孕。', body: '适度运动能改善内分泌、控制体重。跳绳、瑜伽、快走都是不错的选择，[人群]排卵后避免剧烈运动。', ending: '关注我，获取更多[人群]备孕干货。', tags: ['备孕','运动','健康'] }
   ];
 
+  const DEFAULT_BACKEND = { url: '', apiKey: '', autoSync: false };
+
   let state = {
     accounts: [],
     templates: [],
     scripts: [],
     drafts: [],
-    settings: { lastFetch: null }
+    settings: { lastFetch: null },
+    backend: load(KEYS.backend, DEFAULT_BACKEND)
   };
 
   if (location.search.includes('reset=1')) {
@@ -529,6 +560,7 @@
     state.scripts = load(KEYS.scripts, []);
     state.drafts = load(KEYS.drafts, []);
     state.settings = load(KEYS.settings, { lastFetch: null });
+    state.backend = load(KEYS.backend, DEFAULT_BACKEND);
     maybeDailyFetch();
     renderAll();
     refreshIcons();
@@ -696,8 +728,14 @@
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const active = document.querySelector('.nav-item[data-page="' + page + '"]');
     if (active) active.classList.add('active');
-    if (page === 'templates') updateDailyInfo();
+    if (page === 'templates') {
+      updateDailyInfo();
+      if (state.backend && state.backend.autoSync && state.backend.url) {
+        syncFromBackend(false);
+      }
+    }
     if (page === 'scripts') { updateScriptTemplateOptions(); autoInferAudience(); updateScriptFramework(); renderScriptOutput(); }
+    if (page === 'settings') loadBackendConfig();
   }
 
   function renderAll() {
@@ -1095,6 +1133,85 @@
       sourceLink: url,
       _meta: { platform, keyword, category, author }
     };
+  }
+
+  function backendItemToTemplate(item) {
+    // 后端返回的 item 字段与 CSV 字段对齐
+    return collectedRowToTemplate({
+      '平台': item.platform,
+      '赛道标签': item.category,
+      '关键词': item.keyword,
+      '标题': item.title,
+      '完整文案/正文': item.content,
+      '作品链接': item.url,
+      '发布账号': item.author,
+      '钩子/痛点': item.hook_pain,
+      '价值输出': item.value_output,
+      '引导话术': item.guidance,
+      '结尾转化': item.ending,
+    });
+  }
+
+  function loadBackendConfig() {
+    const cfg = load(KEYS.backend, DEFAULT_BACKEND);
+    state.backend = cfg;
+    const urlInput = document.getElementById('backend-url');
+    const keyInput = document.getElementById('backend-api-key');
+    const autoInput = document.getElementById('backend-auto-sync');
+    if (urlInput) urlInput.value = cfg.url || '';
+    if (keyInput) keyInput.value = cfg.apiKey || '';
+    if (autoInput) autoInput.checked = !!cfg.autoSync;
+    const status = document.getElementById('backend-status');
+    if (status) {
+      const last = load(KEYS.lastSync, null);
+      status.textContent = last ? '上次同步：' + new Date(last).toLocaleString() : '尚未同步';
+    }
+  }
+
+  function saveBackendConfig() {
+    const url = (document.getElementById('backend-url').value || '').trim();
+    const apiKey = (document.getElementById('backend-api-key').value || '').trim();
+    const autoSync = document.getElementById('backend-auto-sync').checked;
+    state.backend = { url, apiKey, autoSync };
+    save(KEYS.backend, state.backend);
+    toast('后端配置已保存');
+    loadBackendConfig();
+  }
+
+  async function syncFromBackend(showToast = true) {
+    const cfg = state.backend || {};
+    if (!cfg.url) {
+      if (showToast) toast('请先配置后端地址');
+      return;
+    }
+    const since = load(KEYS.lastSync, '1970-01-01T00:00:00.000Z');
+    const url = cfg.url.replace(/\/$/, '') + '/api/items/latest?since=' + encodeURIComponent(since);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const items = (data.items || []).map(backendItemToTemplate).filter(Boolean);
+      if (items.length) {
+        // 按 url/sourceLink 去重
+        const existing = new Set(state.templates.map(t => t.sourceLink || t._meta?.url || '').filter(Boolean));
+        const newItems = items.filter(t => !existing.has(t.sourceLink));
+        if (newItems.length) {
+          state.templates = newItems.concat(state.templates);
+          save(KEYS.templates, state.templates);
+          renderTemplates();
+          toast('已从后端同步 ' + newItems.length + ' 条新数据');
+        } else if (showToast) {
+          toast('后端暂无新数据');
+        }
+      } else if (showToast) {
+        toast('后端暂无新数据');
+      }
+      save(KEYS.lastSync, new Date().toISOString());
+      loadBackendConfig();
+    } catch (err) {
+      console.error('[sync]', err);
+      if (showToast) toast('同步失败：' + err.message);
+    }
   }
 
   function openWeeklyCollection() {
@@ -1568,7 +1685,10 @@
     renderAccounts,
     renderTemplates,
     renderLibrary,
-    renderDrafts
+    renderDrafts,
+    saveBackendConfig,
+    syncFromBackend,
+    loadBackendConfig
   };
 
   document.addEventListener('DOMContentLoaded', init);

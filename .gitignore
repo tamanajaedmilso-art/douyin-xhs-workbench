@@ -3,6 +3,7 @@ node_modules/
 .DS_Store
 *.log
 .vercel
+data/
 crawler/venv/
 crawler/__pycache__/
 crawler/scraper/__pycache__/
