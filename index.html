@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抖音&amp;小红书多账号爆款内容工作台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans SC', 'sans-serif'],
+          },
+          colors: {
+            beige: { 50: '#fbfaf8', 100: '#f5f2ed', 200: '#ebe5dc' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Noto Sans SC', sans-serif; background-color: #fbfaf8; }
+    .nav-item.active { background-color: #fff1f2; color: #fb7185; border-right: 3px solid #fb7185; }
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+    .card { background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #f5f2ed; }
+    .btn-primary { background: linear-gradient(135deg, #fda4af 0%, #fb7185 100%); color: white; }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-secondary { background: #f5f5f4; color: #57534e; }
+    .btn-secondary:hover { background: #e7e5e4; }
+    .tag { background: #fff1f2; color: #be123c; }
+    .banned { color: #dc2626; background: #fee2e2; padding: 0 2px; border-radius: 3px; font-weight: 600; }
+    textarea, input, select { border: 1px solid #e7e5e4; outline: none; transition: border .2s, box-shadow .2s; }
+    textarea:focus, input:focus, select:focus { border-color: #fda4af; box-shadow: 0 0 0 3px rgba(253,164,175,0.18); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1c1917; color: white; padding: 12px 20px; border-radius: 10px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.18); animation: slideUp .3s ease; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px);} to { opacity: 1; transform: translateY(0);} }
+  </style>
+</head>
+<body class="text-stone-700 h-screen overflow-hidden">
+
+<!-- Layout -->
+<div class="flex h-screen">
+  <!-- Sidebar -->
+  <aside class="w-64 bg-white border-r border-beige-200 flex flex-col flex-shrink-0">
+    <div class="p-6 border-b border-beige-200">
+      <h1 class="text-lg font-bold text-stone-800 leading-tight">爆款内容工作台</h1>
+      <p class="text-xs text-stone-400 mt-1">医美 / 试管备孕 · 多账号</p>
+    </div>
+    <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+      <a href="#" data-page="accounts" class="nav-item active flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('accounts'); return false;">
+        <i data-lucide="users"></i> 账号管理
+      </a>
+      <a href="#" data-page="templates" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('templates'); return false;">
+        <i data-lucide="sparkles"></i> 爆款模板
+      </a>
+      <a href="#" data-page="scripts" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('scripts'); return false;">
+        <i data-lucide="file-text"></i> 脚本批量生成
+      </a>
+      <a href="#" data-page="library" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('library'); return false;">
+        <i data-lucide="archive"></i> 素材资料库
+      </a>
+      <a href="#" data-page="drafts" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('drafts'); return false;">
+        <i data-lucide="send"></i> 草稿分发
+      </a>
+      <a href="#" data-page="settings" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('settings'); return false;">
+        <i data-lucide="settings"></i> 备份/设置
+      </a>
+    </nav>
+    <div class="p-6 border-t border-beige-200 text-xs text-stone-400">
+      <p>数据保存在本地浏览器</p>
+      <p class="mt-1">请定期备份</p>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 overflow-y-auto p-8 bg-beige-50">
+
+    <!-- Accounts -->
+    <section id="page-accounts" class="section active max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-stone-800">多账号管理</h2>
+        <button class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2" onclick="app.openAccountModal()">
+          <i data-lucide="plus" class="w-4 h-4"></i> 新增账号
+        </button>
+      </div>
+      <div class="card p-6">
+        <div class="flex flex-wrap gap-3 mb-5">
+          <select id="account-filter-platform" class="rounded-xl px-3 py-2 text-sm" onchange="app.renderAccounts()">
+            <option value="">全部平台</option>
+            <option value="抖音">抖音</option>
+            <option value="小红书">小红书</option>
+          </select>
+          <select id="account-filter-group" class="rounded-xl px-3 py-2 text-sm" onchange="app.renderAccounts()">
+            <option value="">全部分组</option>
+            <option value="医美机构">医美机构</option>
+            <option value="试管备孕">试管备孕</option>
+            <option value="个人IP">个人IP</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="accounts-list"></div>
+        <div id="accounts-empty" class="hidden text-center py-16 text-stone-400">
+          <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+          <p>暂无账号，点击右上角添加</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Templates -->
+    <section id="page-templates" class="section max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-stone-800">爆款模板智能解析收纳</h2>
+        <div class="flex gap-2">
+          <button class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.exportTemplates()">
+            <i data-lucide="download" class="w-4 h-4"></i> 导出
+          </button>
+          <label class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2 cursor-pointer">
+            <i data-lucide="upload" class="w-4 h-4"></i> 导入
+            <input type="file" class="hidden" accept=".json" onchange="app.importTemplates(this)">
+          </label>
+          <button class="btn-primary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.fetchDailyTemplates()">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> 每日采集
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Parser -->
+        <div class="lg:col-span-1 card p-6 h-fit">
+          <h3 class="font-bold text-stone-800 mb-4 flex items-center gap-2"><i data-lucide="wand-2" class="w-5 h-5 text-rose-400"></i> 粘贴爆款文案</h3>
+          <textarea id="template-input" rows="10" class="w-full rounded-xl p-3 text-sm resize-none" placeholder="粘贴一段抖音或小红书爆款文案，点击智能解析..."></textarea>
+          <button class="btn-primary w-full mt-4 py-2.5 rounded-xl text-sm font-medium" onclick="app.parseTemplate()">智能解析</button>
+          <div id="parse-preview" class="mt-4 hidden text-sm space-y-2"></div>
+          <button id="save-template-btn" class="hidden w-full mt-3 py-2 border border-rose-300 text-rose-500 rounded-xl text-sm font-medium hover:bg-rose-50" onclick="app.saveParsedTemplate()">保存为模板</button>
+        </div>
+
+        <!-- Library -->
+        <div class="lg:col-span-2 card p-6">
+          <div class="flex flex-col sm:flex-row gap-3 mb-5">
+            <input id="template-search" type="text" class="flex-1 rounded-xl px-4 py-2 text-sm" placeholder="搜索标题 / 钩子 / 标签" oninput="app.renderTemplates()">
+            <select id="template-filter-fav" class="rounded-xl px-3 py-2 text-sm" onchange="app.renderTemplates()">
+              <option value="">全部</option>
+              <option value="fav">仅收藏</option>
+            </select>
+          </div>
+          <div id="templates-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+          <div id="templates-empty" class="hidden text-center py-16 text-stone-400">
+            <i data-lucide="sparkles" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+            <p>暂无模板，使用左侧解析功能添加</p>
+          </div>
+          <p class="text-xs text-stone-400 mt-4 flex items-center gap-1"><i data-lucide="info" class="w-3 h-3"></i> <span id="daily-fetch-info"></span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scripts -->
+    <section id="page-scripts" class="section max-w-6xl mx-auto">
+      <h2 class="text-2xl font-bold text-stone-800 mb-6">脚本批量生成</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-6 h-fit lg:col-span-1 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">选择模板</label>
+            <select id="script-template" class="w-full rounded-xl px-3 py-2 text-sm" onchange="app.updateScriptFramework()"></select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">新主题/内容中心 <span class="text-red-400">*</span></label>
+            <input id="script-theme" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：超声炮抗衰" value="超声炮抗衰" oninput="app.autoInferAudience()">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">目标人群（可选）</label>
+            <input id="script-audience" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：30+脸开始下垂的姐妹" oninput="if(this.value.trim()) this.dataset.userEdited='true'; else delete this.dataset.userEdited;">
+          </div>
+          <button class="btn-primary w-full py-2.5 rounded-xl text-sm font-medium" onclick="app.generateScripts()">解析模板框架 + 生成文案</button>
+          <div class="bg-rose-50 rounded-xl p-3 text-xs text-rose-700">
+            <p class="font-medium mb-1">违禁词提示</p>
+            <p>生成后红色高亮显示敏感词，请谨慎使用。</p>
+          </div>
+        </div>
+        <div class="lg:col-span-2 space-y-4">
+          <div id="script-framework-card" class="card p-6 hidden">
+            <h3 class="font-bold text-stone-800 mb-4">模板底层文案框架拆解</h3>
+            <div id="script-framework" class="space-y-2 text-sm text-stone-700"></div>
+          </div>
+          <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-stone-800">生成结果</h3>
+              <div class="flex bg-beige-100 rounded-lg p-1">
+                <button id="fmt-douyin" class="px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm" onclick="app.setScriptFormat('douyin')">抖音口播稿</button>
+                <button id="fmt-xhs" class="px-3 py-1 rounded-md text-xs font-medium text-stone-500" onclick="app.setScriptFormat('xhs')">小红书笔记</button>
+                <button id="fmt-both" class="px-3 py-1 rounded-md text-xs font-medium text-stone-500" onclick="app.setScriptFormat('both')">双平台</button>
+              </div>
+            </div>
+            <div id="scripts-results" class="space-y-4"></div>
+            <div id="scripts-empty" class="text-center py-16 text-stone-400">
+              <i data-lucide="file-text" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+              <p>填写左侧参数后点击生成</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Library -->
+    <section id="page-library" class="section max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-stone-800">素材资料库</h2>
+        <div class="flex gap-2">
+          <button class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.exportLibrary()">
+            <i data-lucide="download" class="w-4 h-4"></i> 导出备份
+          </button>
+          <input id="library-search" type="text" class="rounded-xl px-4 py-2 text-sm" placeholder="搜索关键词" oninput="app.renderLibrary()">
+        </div>
+      </div>
+      <div class="card p-6">
+        <div id="library-list" class="space-y-3"></div>
+        <div id="library-empty" class="hidden text-center py-16 text-stone-400">
+          <i data-lucide="archive" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+          <p>暂无保存的脚本素材</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Drafts -->
+    <section id="page-drafts" class="section max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-stone-800">草稿分发面板</h2>
+        <button class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2" onclick="app.openDraftModal()">
+          <i data-lucide="plus" class="w-4 h-4"></i> 新建草稿
+        </button>
+      </div>
+      <div class="card p-6">
+        <div id="drafts-list" class="space-y-4"></div>
+        <div id="drafts-empty" class="hidden text-center py-16 text-stone-400">
+          <i data-lucide="send" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+          <p>暂无分发草稿，从素材库生成或手动创建</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="page-settings" class="section max-w-3xl mx-auto">
+      <h2 class="text-2xl font-bold text-stone-800 mb-6">备份与设置</h2>
+      <div class="card p-6 space-y-6">
+        <div>
+          <h3 class="font-bold text-stone-800 mb-2">备份全部数据</h3>
+          <p class="text-sm text-stone-500 mb-3">导出账号、模板、脚本、草稿等全部本地数据。</p>
+          <button class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium" onclick="app.exportAll()">备份全部数据</button>
+        </div>
+        <div class="border-t border-beige-200 pt-6">
+          <h3 class="font-bold text-stone-800 mb-2">导入备份</h3>
+          <p class="text-sm text-stone-500 mb-3">选择之前导出的 JSON 备份文件恢复数据。</p>
+          <label class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-stone-100 text-stone-700 hover:bg-stone-200 cursor-pointer">
+            <i data-lucide="upload" class="w-4 h-4"></i> 选择备份文件
+            <input type="file" class="hidden" accept=".json" onchange="app.importAll(this)">
+          </label>
+        </div>
+        <div class="border-t border-beige-200 pt-6">
+          <h3 class="font-bold text-stone-800 mb-2">危险操作</h3>
+          <p class="text-sm text-stone-500 mb-3">清空所有本地数据，此操作不可恢复。</p>
+          <button class="px-5 py-2.5 rounded-xl text-sm font-medium border border-red-300 text-red-600 hover:bg-red-50" onclick="app.clearAll()">清空全部数据</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Account Modal -->
+<div id="account-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+    <h3 id="account-modal-title" class="text-lg font-bold text-stone-800 mb-4">新增账号</h3>
+    <input type="hidden" id="account-id">
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">账号名称</label>
+        <input id="account-name" type="text" class="w-full rounded-xl px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">平台</label>
+        <select id="account-platform" class="w-full rounded-xl px-3 py-2 text-sm">
+          <option value="抖音">抖音</option>
+          <option value="小红书">小红书</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">分组/类别</label>
+        <select id="account-group" class="w-full rounded-xl px-3 py-2 text-sm">
+          <option value="医美机构">医美机构</option>
+          <option value="试管备孕">试管备孕</option>
+          <option value="个人IP">个人IP</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">备注</label>
+        <textarea id="account-note" rows="2" class="w-full rounded-xl px-3 py-2 text-sm resize-none"></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button class="px-4 py-2 rounded-xl text-sm text-stone-500 hover:bg-stone-100" onclick="app.closeAccountModal()">取消</button>
+      <button class="btn-primary px-5 py-2 rounded-xl text-sm font-medium" onclick="app.saveAccount()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Draft Modal -->
+<div id="draft-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <h3 class="text-lg font-bold text-stone-800 mb-4">新建分发草稿</h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">标题</label>
+        <input id="draft-title" type="text" class="w-full rounded-xl px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">选择平台</label>
+        <select id="draft-platform" class="w-full rounded-xl px-3 py-2 text-sm">
+          <option value="抖音">抖音</option>
+          <option value="小红书">小红书</option>
+          <option value="双平台">双平台</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">目标账号</label>
+        <div id="draft-accounts" class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-beige-50 rounded-xl"></div>
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">抖音文案</label>
+        <textarea id="draft-douyin" rows="4" class="w-full rounded-xl px-3 py-2 text-sm resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">小红书文案</label>
+        <textarea id="draft-xhs" rows="4" class="w-full rounded-xl px-3 py-2 text-sm resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm text-stone-600 mb-1">状态</label>
+        <select id="draft-status" class="w-full rounded-xl px-3 py-2 text-sm">
+          <option value="草稿">草稿</option>
+          <option value="待拍摄">待拍摄</option>
+          <option value="已发布">已发布</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button class="px-4 py-2 rounded-xl text-sm text-stone-500 hover:bg-stone-100" onclick="app.closeDraftModal()">取消</button>
+      <button class="btn-primary px-5 py-2 rounded-xl text-sm font-medium" onclick="app.saveDraft()">保存草稿</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detail-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <h3 id="detail-title" class="text-lg font-bold text-stone-800 mb-4">详情</h3>
+    <div id="detail-body" class="text-sm text-stone-700 space-y-3 whitespace-pre-wrap"></div>
+    <div class="flex justify-end mt-6">
+      <button class="btn-secondary px-5 py-2 rounded-xl text-sm font-medium" onclick="app.closeDetailModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirm-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+    <h3 id="confirm-title" class="text-lg font-bold text-stone-800 mb-2">确认</h3>
+    <p id="confirm-message" class="text-sm text-stone-600 mb-6">确定执行此操作吗？</p>
+    <div class="flex justify-end gap-2">
+      <button class="px-4 py-2 rounded-xl text-sm text-stone-500 hover:bg-stone-100" onclick="app.closeConfirmModal()">取消</button>
+      <button id="confirm-btn" class="px-5 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template Edit Modal -->
+<div id="template-edit-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <h3 class="text-lg font-bold text-stone-800 mb-4">编辑模板</h3>
+    <input type="hidden" id="template-edit-id">
+    <div class="space-y-3">
+      <div><label class="block text-xs text-stone-500 mb-1">标题</label><input id="template-edit-title" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
+      <div><label class="block text-xs text-stone-500 mb-1">钩子</label><input id="template-edit-hook" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
+      <div><label class="block text-xs text-stone-500 mb-1">痛点</label><input id="template-edit-pain" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
+      <div><label class="block text-xs text-stone-500 mb-1">痒点</label><input id="template-edit-itch" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
+      <div><label class="block text-xs text-stone-500 mb-1">卖点（每行一条）</label><textarea id="template-edit-points" rows="4" class="w-full rounded-xl px-3 py-2 text-sm resize-none"></textarea></div>
+      <div><label class="block text-xs text-stone-500 mb-1">正文结构</label><textarea id="template-edit-body" rows="4" class="w-full rounded-xl px-3 py-2 text-sm resize-none"></textarea></div>
+      <div><label class="block text-xs text-stone-500 mb-1">结尾引导</label><input id="template-edit-ending" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
+      <div><label class="block text-xs text-stone-500 mb-1">标签（用空格分隔）</label><input id="template-edit-tags" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button class="px-4 py-2 rounded-xl text-sm text-stone-500 hover:bg-stone-100" onclick="app.closeTemplateEditModal()">取消</button>
+      <button class="btn-primary px-5 py-2 rounded-xl text-sm font-medium" onclick="app.saveTemplateEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const PREFIX = 'dwxh_';
+  const KEYS = {
+    accounts: PREFIX + 'accounts',
+    templates: PREFIX + 'templates',
+    scripts: PREFIX + 'scripts',
+    drafts: PREFIX + 'drafts',
+    settings: PREFIX + 'settings'
+  };
+
+  const BANNED_WORDS = ['最好','最佳','第一','顶级','国家级','特效','根治','无效退款','保证','绝对','100%','零风险','永久','立刻','马上','一针见效','神药','包治','秘方','纯天然无副作用','医美贷','整容贷'];
+
+  const ACCOUNT_GROUPS = ['医美机构','试管备孕','个人IP','其他'];
+  const PLATFORMS = ['抖音','小红书'];
+
+  function accountAvatar(name) {
+    return name.trim().slice(0, 2);
+  }
+  function accountColorClass(platform) {
+    return platform === '抖音' ? 'bg-stone-800 text-white' : 'bg-rose-500 text-white';
+  }
+  function makeAccount(name, platform, group, note) {
+    return { id: uid('acc'), name, platform, group, note, avatar: accountAvatar(name), createdAt: new Date().toISOString() };
+  }
+
+  const DEFAULT_ACCOUNTS = [
+    makeAccount('小美医美日记', '小红书', '医美机构', '主账号，日更2条'),
+    makeAccount('试管备孕咨询师', '抖音', '试管备孕', '口播账号'),
+    makeAccount('Dr.林说脸', '抖音', '个人IP', '医生IP打造'),
+    makeAccount('备孕妈妈小糖', '小红书', '试管备孕', '真实经验分享'),
+    makeAccount('星辰医美官号', '抖音', '医美机构', '机构活动发布')
+  ];
+
+  const DEFAULT_TEMPLATES = [
+    { id: 'tpl_1', title: '熬夜肌急救', hook: '[人群]别慌，[项目]真的能救！', painPoint: '[人群]皮肤暗沉、毛孔粗大，第二天状态差', itchPoint: '做完[项目]，第二天皮肤依旧透亮，素颜也能出门', sellingPoints: ['30分钟提亮','无创无痛','第二天可化妆'], body: '很多姐妹问我，[人群]的急救办法。其实[项目]搭配修护补水，做一次就能感受到变化。', ending: '想知道你适不适合？评论区扣1，帮你分析肤质。', tags: ['光子嫩肤','熬夜肌','医美'], favorite: false, source: '内置' },
+    { id: 'tpl_2', title: '三代试管答疑', hook: '[人群]做试管，为什么都选[项目]？', painPoint: '[人群]最怕反复流产、染色体异常、胎停风险', itchPoint: '[项目]能筛查胚胎染色体，提高着床率，少走弯路', sellingPoints: ['筛查胚胎染色体','降低胎停风险','提高着床率'], body: '[项目]并不是一代更比一代强，而是适合有反复流产、高龄、染色体异常史的夫妻。医生会根据检查报告给出建议。', ending: '留下你的年龄和AMH，帮你初步评估。', tags: ['三代试管','高龄备孕','试管'], favorite: false, source: '内置' },
+    { id: 'tpl_3', title: '医美小白避坑', hook: '第一次做[项目]，这3件事没人告诉你！', painPoint: '怕做[项目]踩坑、选错机构、怕效果不满意', itchPoint: '安全做好[项目]，少花冤枉钱', sellingPoints: ['查机构资质','看医生案例','别贪便宜'], body: '[项目]不是买菜，越便宜越要警惕。正规机构、合规产品、有资质的医生，三者缺一不可。', ending: '私信我领取《医美避坑清单》。', tags: ['医美避坑','新手','安全'], favorite: false, source: '内置' },
+    { id: 'tpl_4', title: '试管取卵真实分享', hook: '[项目]到底痛不痛？我替你们试过了。', painPoint: '很多姐妹最怕[项目]，担心疼痛和恢复慢', itchPoint: '[项目]全麻无痛，术后休息2小时就能回家', sellingPoints: ['全麻无痛','术后休息2小时','多数人可当天回家'], body: '很多姐妹最怕[项目]。实际在全麻下基本没感觉，术后可能会有轻微腹胀，遵医嘱多喝水、补充蛋白。', ending: '想了解试管全流程？关注我，持续更新。', tags: ['试管取卵','真实分享','备孕'], favorite: false, source: '内置' },
+    { id: 'tpl_5', title: '瘦脸针避雷', hook: '[项目]不是人人都适合，这3类脸别打！', painPoint: '脸大、脸宽让人自卑，但[项目]打错地方浪费钱', itchPoint: '找到适合自己脸型的[项目]方案，精准变美', sellingPoints: ['咬肌肥大才有效','骨骼型不适合','要选正规肉毒'], body: '[项目]只对咬肌肥大有效。如果你是脂肪多或骨骼宽，效果会不明显，要针对性改善。', ending: '拍一张正面照，评论区帮你判断类型。', tags: ['瘦脸针','肉毒','脸型'], favorite: false, source: '内置' },
+    { id: 'tpl_6', title: '试管移植后注意', hook: '[项目]后这5天，我做了3件对的事。', painPoint: '[项目]后不敢动、过度紧张、怕着床失败', itchPoint: '保持轻松心态，[项目]后顺利接好孕', sellingPoints: ['不绝对卧床','按时用药','保持心情放松'], body: '[项目]后不需要一直躺着，正常生活即可。过度紧张反而影响着床，遵医嘱用药、按时复查是关键。', ending: '点赞收藏，接好孕！', tags: ['试管移植','好孕','备孕'], favorite: false, source: '内置' },
+    { id: 'tpl_7', title: '水光针怎么选', hook: '[项目]不是越贵越好，看懂成分再掏钱。', painPoint: '[人群]皮肤干燥、卡粉、细纹多，不知道选什么[项目]', itchPoint: '精准选对[项目]，皮肤嫩到发光', sellingPoints: ['基础补水选玻尿酸','抗衰选动能素','修复选三文鱼'], body: '不同皮肤问题适合不同[项目]。先明确自己的需求，再让医生推荐配方，避免被营销牵着走。', ending: '拿不准的姐妹，私信发皮肤情况给我。', tags: ['水光针','护肤','医美'], favorite: false, source: '内置' },
+    { id: 'tpl_8', title: '多囊备孕经验', hook: '[人群]不是不孕，我用3个月调好备孕。', painPoint: '[人群]月经不调、排卵难、备孕压力大', itchPoint: '调理好[人群]，自然怀孕迎来宝宝', sellingPoints: ['控制胰岛素抵抗','规律作息','监测排卵'], body: '[人群]需要通过生活方式、药物调理和排卵监测综合管理。很多人调整后都能自然怀孕。', ending: '需要备孕方案模板的姐妹，评论区留言。', tags: ['多囊','备孕','调理'], favorite: false, source: '内置' },
+    { id: 'tpl_9', title: '抗衰仪器对比', hook: '热玛吉和[项目]，到底怎么选？', painPoint: '[人群]脸开始下垂、松弛，不知道选什么仪器', itchPoint: '热玛吉+[项目]，紧致+提拉轮廓更年轻', sellingPoints: ['一个紧致','一个提拉','联合效果更佳'], body: '热玛吉侧重紧致肤质，[项目]侧重深层提拉。30+下垂明显可以联合治疗，间隔1-3个月。', ending: '留下年龄和皮肤问题，我帮你选。', tags: ['热玛吉','超声炮','抗衰'], favorite: false, source: '内置' },
+    { id: 'tpl_10', title: '试管费用解析', hook: '做一次[项目]到底要花多少钱？', painPoint: '[人群]做[项目]费用不透明，怕预算不够被坑', itchPoint: '提前了解[项目]费用明细，心里有底', sellingPoints: ['检查费','促排费','手术费'], body: '[项目]费用因人而异，主要包括前期检查、促排药物、取卵移植等。公立医院和私立机构差异较大。', ending: '想拿费用明细表？私信“费用”领取。', tags: ['试管费用','备孕','预算'], favorite: false, source: '内置' },
+    { id: 'tpl_11', title: '法令纹填充真相', hook: '[项目]深，不是填越多越好看！', painPoint: '[项目]显老、显疲惫，填充又怕假面', itchPoint: '自然饱满的[项目]效果，年轻5岁', sellingPoints: ['分型治疗','填充+提升联合','避免假面感'], body: '[项目]成因复杂，可能是鼻基底凹陷、皮肤松弛或表情习惯。要分型治疗，填充+提升联合更自然。', ending: '评论区发照片，帮你判断类型。', tags: ['法令纹','填充','抗衰'], favorite: false, source: '内置' },
+    { id: 'tpl_12', title: '双眼皮修复', hook: '[项目]做坏了，什么时候能修复？', painPoint: '[项目]后肉条感、宽深假、不对称，后悔当初选择', itchPoint: '[项目]修复后眼睛自然有神，重拾自信', sellingPoints: ['术后6个月以上评估','分型修复思路','选经验丰富的医生'], body: '一般建议[项目]术后6个月以上再评估修复。肉条感、宽深假、不对称都有不同的修复思路。', ending: '需要修复建议的姐妹，私信我。', tags: ['双眼皮','修复','医美'], favorite: false, source: '内置' },
+    { id: 'tpl_13', title: '曼谷全身美白故事流', hook: '来曼谷做[项目]，我真的找到了全身美白的神', painPoint: '直接拯救了我的黄黑粗糙皮，之前全身暗沉发黄、关节死角发黑，肤色斑驳不均、肌理坑坑洼洼，每天对着镜子身材肤色内耗，自卑又崩溃', itchPoint: '直到曼谷本地闺蜜安利，说这家的分层焕白技术在本地名媛圈层都传开了，搜了一下才知道本地评分竟高达9.9分，深耕全身肌肤精细化焕白十多年，专门做分层透亮冷白肌，给很多名媛贵妇、精致女生打理过全身肤质，专业实力实打实过硬', sellingPoints: [], body: '面诊操作前我还特别紧张，怕力度过重刺激泛红、怕假白僵硬、怕做完快速反黑，没想到性价比直接碾压国内同款高端美白项目，全套[项目]全身进阶焕白改造也才1W+。他家美白审美真的超级高级，坚决拒绝网红死白、假面假白，只做原生通透的自然冷白皮，全程操作温柔细致，还会耐心安抚情绪，根据每个人的肤色暗沉情况、肌肤耐受度精细化把控层次和力度，不过度护理、不强行提亮，最终通透干净的质感直接惊艳到我，这趟曼谷变美之旅真的选对了', ending: '近期打算来曼谷做[项目]、改善黄黑皮、想拥有通透冷白肌的[人群]，可以滴滴我哦', tags: ['曼谷医美','全身美白','医美'], favorite: false, source: '内置' }
+  ];
+
+  const DAILY_SEEDS = [
+    { title: '法令纹填充真相', hook: '[人群]法令纹深，不是填越多越好看！', body: '[项目]成因复杂，可能是鼻基底凹陷、皮肤松弛或表情习惯。要分型治疗，填充+提升联合更自然。', ending: '评论区发照片，帮你判断类型。', tags: ['法令纹','填充','抗衰'] },
+    { title: '试管促排饮食', hook: '[项目]期间这样吃，卵泡又大又圆。', body: '[项目]期间注意高蛋白、低糖、多喝水，避免剧烈运动。蛋白粉、鱼虾、豆浆都是不错的选择。', ending: '收藏这份饮食清单，[项目]不踩坑。', tags: ['试管','促排','饮食'] },
+    { title: '双眼皮修复', hook: '[项目]做坏了，什么时候能修复？', body: '一般建议[项目]术后6个月以上再评估修复。肉条感、宽深假、不对称都有不同的修复思路。', ending: '需要修复建议的姐妹，私信我。', tags: ['双眼皮','修复','医美'] },
+    { title: 'AMH低怎么办', hook: '[人群]AMH低就是卵巢早衰？别自己吓自己。', body: 'AMH反映卵子储备，但不代表怀孕能力。结合年龄、FSH和窦卵泡数综合判断，很多[人群]都能自然怀。', ending: '把你的报告发给我，帮你分析。', tags: ['AMH','卵巢','备孕'] },
+    { title: '超光子体验', hook: '[项目]和光子嫩肤，差别到底在哪？', body: '[项目]是升级版，能量更精准，滤波片更多，针对红血丝、痤疮、色斑可以个性化调整。', ending: '想做皮肤检测的姐妹，点击预约。', tags: ['超光子','光子嫩肤','医美'] },
+    { title: '试管心理准备', hook: '做[项目]，最难的不是打针，是心态。', body: '[项目]周期长、压力大，夫妻互相支持很重要。必要时可以寻求心理咨询，不要把所有情绪自己扛。', ending: '聊聊你的[项目]故事，我们互相打气。', tags: ['试管','心理','备孕'] },
+    { title: '玻尿酸轮廓固定', hook: '[项目]不是打越多越好，审美大于技术。', body: '好的[项目]是恢复年轻时的骨相支撑，而不是把脸打肿。材料选择、注射点位、剂量都很关键。', ending: '想了解适合自己的方案？私信面部分析。', tags: ['玻尿酸','轮廓固定','医美'] },
+    { title: '备孕运动建议', hook: '[人群]别只会躺平，这3种运动更助孕。', body: '适度运动能改善内分泌、控制体重。跳绳、瑜伽、快走都是不错的选择，[人群]排卵后避免剧烈运动。', ending: '关注我，获取更多[人群]备孕干货。', tags: ['备孕','运动','健康'] }
+  ];
+
+  let state = {
+    accounts: [],
+    templates: [],
+    scripts: [],
+    drafts: [],
+    settings: { lastFetch: null }
+  };
+
+  if (location.search.includes('reset=1')) {
+    localStorage.clear();
+    location.replace(location.pathname);
+    return;
+  }
+
+  let parseResult = null;
+
+  function uid(prefix) {
+    return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+  }
+
+  function refreshIcons() {
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+  }
+
+  function load(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function save(key, data) {
+    localStorage.setItem(key, JSON.stringify(data));
+  }
+
+  function init() {
+    let acc = load(KEYS.accounts, null);
+    if (!acc) {
+      acc = JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS));
+    } else {
+      acc = acc.map(a => ({ ...a, avatar: a.avatar || accountAvatar(a.name) }));
+    }
+    state.accounts = acc;
+    save(KEYS.accounts, state.accounts);
+
+    let tpl = load(KEYS.templates, null);
+    if (!tpl) {
+      tpl = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+    } else {
+      tpl = tpl.map(t => ({ ...t, painPoint: t.painPoint || '', itchPoint: t.itchPoint || '', bodyStructure: t.bodyStructure || t.body || '' }));
+    }
+    state.templates = tpl;
+    save(KEYS.templates, state.templates);
+
+    state.scripts = load(KEYS.scripts, []);
+    state.drafts = load(KEYS.drafts, []);
+    state.settings = load(KEYS.settings, { lastFetch: null });
+    maybeDailyFetch();
+    renderAll();
+    refreshIcons();
+  }
+
+  function maybeDailyFetch() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (state.settings.lastFetch !== today) {
+      fetchDailyTemplates(true);
+    }
+  }
+
+  function fetchDailyTemplates(silent) {
+    const count = 2 + Math.floor(Math.random() * 3);
+    const shuffled = DAILY_SEEDS.slice().sort(() => Math.random() - 0.5);
+    for (let i = 0; i < count; i++) {
+      const s = shuffled[i];
+      const exists = state.templates.some(t => t.title === s.title);
+      if (exists) continue;
+      state.templates.unshift({
+        id: uid('tpl'),
+        title: s.title,
+        hook: s.hook,
+        painPoint: extractPainPoint(s.hook + ' ' + s.body),
+        itchPoint: extractItchPoint(s.hook + ' ' + s.body),
+        sellingPoints: extractSellingPoints(s.hook + ' ' + s.body),
+        body: s.body,
+        ending: s.ending,
+        tags: s.tags,
+        favorite: false,
+        source: '每日采集'
+      });
+    }
+    state.settings.lastFetch = new Date().toISOString().slice(0, 10);
+    save(KEYS.templates, state.templates);
+    save(KEYS.settings, state.settings);
+    renderTemplates();
+    updateDailyInfo();
+    if (!silent) toast('已采集 ' + count + ' 条爆款模板');
+  }
+
+  function updateDailyInfo() {
+    const el = document.getElementById('daily-fetch-info');
+    if (el) el.textContent = '上次采集：' + (state.settings.lastFetch || '无') + '，共 ' + state.templates.length + ' 条模板';
+  }
+
+  function extractHook(text) {
+    const lines = text.split(/\n/).filter(l => l.trim());
+    return lines[0] ? lines[0].trim().slice(0, 80) : '';
+  }
+
+  function extractPainPoint(text) {
+    const lines = text.split(/\n|，|。/).map(l => l.trim()).filter(Boolean);
+    const painWords = ['焦虑','困扰','烦恼','怕','担心','后悔','踩坑','失败','下垂','松弛','暗沉','长痘','不孕','胎停','法令纹深','凹陷','宽','假','痛','贵','乱','坑','肉条','不对称','翻车'];
+    const scored = lines.map(line => {
+      let score = 0;
+      painWords.forEach(w => { if (line.includes(w)) score += 2; });
+      if (/[？?]/.test(line)) score += 1;
+      return { line, score };
+    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+    return scored[0] ? scored[0].line.slice(0, 120) : '';
+  }
+
+  function extractItchPoint(text) {
+    const lines = text.split(/\n|，|。/).map(l => l.trim()).filter(Boolean);
+    const itchWords = ['想要','逆袭','变美','年轻','紧致','透亮','好孕','心动','种草','素颜自由','发光','自然','自信','饱满','理想','期待','渴望','无痕','高级','幼态'];
+    const scored = lines.map(line => {
+      let score = 0;
+      itchWords.forEach(w => { if (line.includes(w)) score += 2; });
+      if (/[！!]/.test(line)) score += 1;
+      return { line, score };
+    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+    return scored[0] ? scored[0].line.slice(0, 120) : '';
+  }
+
+  function extractSellingPoints(text) {
+    const lines = text.split(/\n|，|。/).map(l => l.trim()).filter(l => l.length > 3 && l.length < 60);
+    const benefitWords = ['提亮','紧致','提升','降低','提高','改善','有效','无痛','安全','自然','持久','快速','筛查','降低风险','可当天','能','会','选','适合'];
+    const scored = lines.map(line => {
+      let score = 0;
+      if (/\d+/.test(line)) score += 3;
+      if (/[·！!、]/.test(line)) score += 2;
+      benefitWords.forEach(w => { if (line.includes(w)) score += 2; });
+      return { line, score };
+    }).sort((a, b) => b.score - a.score);
+    return scored.slice(0, 5).map(s => s.line);
+  }
+
+  function extractBody(text, hook, ending) {
+    let body = text.replace(hook, '').replace(ending, '').trim();
+    return body.slice(0, 400);
+  }
+
+  function extractEnding(text) {
+    const lines = text.split(/\n/).filter(l => l.trim());
+    const cta = ['关注','私信','预约','点击','链接','评论区','咨询','领取','扣','私信我','留言'];
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (cta.some(k => lines[i].includes(k))) return lines[i].trim();
+    }
+    return lines[lines.length - 1] ? lines[lines.length - 1].trim() : '';
+  }
+
+  function extractTags(text) {
+    const tags = [];
+    const hash = text.match(/#([^#\s]+)/g);
+    if (hash) hash.forEach(h => tags.push(h.replace('#', '')));
+    if (tags.length === 0) {
+      const keywords = ['医美','试管','备孕','光子嫩肤','水光针','热玛吉','超声炮','瘦脸针','玻尿酸','双眼皮','法令纹','抗衰','三代试管','多囊','AMH','移植','取卵','促排'];
+      keywords.forEach(k => { if (text.includes(k) && !tags.includes(k)) tags.push(k); });
+    }
+    return tags.slice(0, 8);
+  }
+
+  function parseTemplate() {
+    const input = document.getElementById('template-input').value.trim();
+    if (!input) { toast('请先粘贴爆款文案'); return; }
+    const hook = extractHook(input);
+    const painPoint = extractPainPoint(input);
+    const itchPoint = extractItchPoint(input);
+    const sellingPoints = extractSellingPoints(input);
+    const ending = extractEnding(input);
+    const body = extractBody(input, hook, ending);
+    const tags = extractTags(input);
+    parseResult = { hook, painPoint, itchPoint, sellingPoints, body, ending, tags, source: '解析' };
+    const preview = document.getElementById('parse-preview');
+    preview.innerHTML = '<div><span class="font-medium">钩子：</span>' + escapeHtml(hook) + '</div>' +
+      (painPoint ? '<div><span class="font-medium">痛点：</span><span class="text-stone-600">' + escapeHtml(painPoint) + '</span></div>' : '') +
+      (itchPoint ? '<div><span class="font-medium">痒点：</span><span class="text-stone-600">' + escapeHtml(itchPoint) + '</span></div>' : '') +
+      '<div><span class="font-medium">卖点：</span>' + sellingPoints.map(s => '<span class="tag text-xs px-2 py-0.5 rounded-full inline-block mr-1">' + escapeHtml(s) + '</span>').join('') + '</div>' +
+      '<div><span class="font-medium">正文结构：</span>' + escapeHtml(body.slice(0, 120)) + (body.length > 120 ? '...' : '') + '</div>' +
+      '<div><span class="font-medium">结尾引导：</span>' + escapeHtml(ending) + '</div>' +
+      '<div><span class="font-medium">标签：</span>' + tags.map(t => '#' + escapeHtml(t)).join(' ') + '</div>';
+    preview.classList.remove('hidden');
+    document.getElementById('save-template-btn').classList.remove('hidden');
+  }
+
+  function saveParsedTemplate() {
+    if (!parseResult) return;
+    const title = parseResult.hook.slice(0, 30) || '未命名模板';
+    state.templates.unshift({ id: uid('tpl'), title, ...parseResult, favorite: false });
+    save(KEYS.templates, state.templates);
+    document.getElementById('template-input').value = '';
+    document.getElementById('parse-preview').classList.add('hidden');
+    document.getElementById('save-template-btn').classList.add('hidden');
+    parseResult = null;
+    renderTemplates();
+    toast('模板已保存');
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2500);
+  }
+
+  function nav(page) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const active = document.querySelector('.nav-item[data-page="' + page + '"]');
+    if (active) active.classList.add('active');
+    if (page === 'templates') updateDailyInfo();
+    if (page === 'scripts') { updateScriptTemplateOptions(); autoInferAudience(); updateScriptFramework(); renderScriptOutput(); }
+  }
+
+  function renderAll() {
+    renderAccounts();
+    renderTemplates();
+    updateScriptTemplateOptions();
+    autoInferAudience();
+    updateScriptFramework();
+    renderScriptOutput();
+    renderLibrary();
+    renderDrafts();
+    updateDailyInfo();
+  }
+
+  // Accounts
+  function renderAccounts() {
+    const list = document.getElementById('accounts-list');
+    const empty = document.getElementById('accounts-empty');
+    const platformFilter = document.getElementById('account-filter-platform')?.value || '';
+    const groupFilter = document.getElementById('account-filter-group')?.value || '';
+    const filtered = state.accounts.filter(a => (!platformFilter || a.platform === platformFilter) && (!groupFilter || a.group === groupFilter));
+    if (!filtered.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    list.innerHTML = filtered.map(a => {
+      const platformBadge = a.platform === '抖音' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-white">抖音</span>' : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500 text-white">小红书</span>';
+      return '<div class="card p-4 border border-beige-200 hover:shadow-md transition">' +
+        '<div class="flex items-start justify-between">' +
+          '<div class="flex items-center gap-3">' +
+            '<div class="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold ' + accountColorClass(a.platform) + '">' + escapeHtml(a.avatar || accountAvatar(a.name)) + '</div>' +
+            '<div>' +
+              '<h4 class="font-bold text-stone-800">' + escapeHtml(a.name) + '</h4>' +
+              '<div class="flex items-center gap-1 mt-0.5">' + platformBadge + '<span class="text-xs text-stone-500">' + escapeHtml(a.group) + '</span></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="flex gap-1">' +
+            '<button class="p-1.5 rounded-lg hover:bg-beige-100 text-stone-400" onclick="app.editAccount(\'' + a.id + '\')"><i data-lucide="pencil" class="w-4 h-4"></i></button>' +
+            '<button class="p-1.5 rounded-lg hover:bg-red-50 text-red-400" onclick="app.confirmDeleteAccount(\'' + a.id + '\')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' +
+          '</div>' +
+        '</div>' +
+        '<p class="text-xs text-stone-400 mt-3 line-clamp-2">' + escapeHtml(a.note || '暂无备注') + '</p>' +
+      '</div>';
+    }).join('');
+    refreshIcons();
+  }
+
+  function openAccountModal(id) {
+    document.getElementById('account-modal').classList.remove('hidden');
+    document.getElementById('account-modal').classList.add('flex');
+    document.getElementById('account-modal-title').textContent = id ? '编辑账号' : '新增账号';
+    document.getElementById('account-id').value = id || '';
+    if (id) {
+      const a = state.accounts.find(x => x.id === id);
+      document.getElementById('account-name').value = a.name;
+      document.getElementById('account-platform').value = a.platform;
+      document.getElementById('account-group').value = a.group;
+      document.getElementById('account-note').value = a.note;
+    } else {
+      document.getElementById('account-name').value = '';
+      document.getElementById('account-platform').value = '抖音';
+      document.getElementById('account-group').value = '医美机构';
+      document.getElementById('account-note').value = '';
+    }
+  }
+
+  function closeAccountModal() {
+    document.getElementById('account-modal').classList.add('hidden');
+    document.getElementById('account-modal').classList.remove('flex');
+  }
+
+  function saveAccount() {
+    const id = document.getElementById('account-id').value;
+    const name = document.getElementById('account-name').value.trim();
+    const platform = document.getElementById('account-platform').value;
+    const group = document.getElementById('account-group').value;
+    const note = document.getElementById('account-note').value.trim();
+    if (!name) { toast('请输入账号名称'); return; }
+    if (id) {
+      const idx = state.accounts.findIndex(a => a.id === id);
+      state.accounts[idx] = { ...state.accounts[idx], id, name, platform, group, note, avatar: accountAvatar(name) };
+    } else {
+      state.accounts.push(makeAccount(name, platform, group, note));
+    }
+    save(KEYS.accounts, state.accounts);
+    closeAccountModal();
+    renderAccounts();
+    toast('账号已保存');
+  }
+
+  let accountToDelete = null;
+  function confirmDeleteAccount(id) {
+    const a = state.accounts.find(x => x.id === id);
+    accountToDelete = id;
+    openConfirmModal('删除账号', '确定删除账号「' + a.name + '」吗？删除后不可恢复。', () => {
+      state.accounts = state.accounts.filter(a => a.id !== accountToDelete);
+      accountToDelete = null;
+      save(KEYS.accounts, state.accounts);
+      renderAccounts();
+      toast('账号已删除');
+    });
+  }
+
+  let confirmCallback = null;
+  function openConfirmModal(title, message, onConfirm) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    document.getElementById('confirm-modal').classList.remove('hidden');
+    document.getElementById('confirm-modal').classList.add('flex');
+    confirmCallback = onConfirm;
+    document.getElementById('confirm-btn').onclick = () => {
+      closeConfirmModal();
+      if (confirmCallback) confirmCallback();
+    };
+  }
+  function closeConfirmModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+    document.getElementById('confirm-modal').classList.remove('flex');
+    confirmCallback = null;
+  }
+
+  // Templates
+  function renderTemplates() {
+    const list = document.getElementById('templates-list');
+    const empty = document.getElementById('templates-empty');
+    const q = (document.getElementById('template-search')?.value || '').toLowerCase();
+    const favOnly = document.getElementById('template-filter-fav')?.value === 'fav';
+    const filtered = state.templates.filter(t => {
+      const match = !q || t.title.toLowerCase().includes(q) || t.hook.toLowerCase().includes(q) || (t.painPoint && t.painPoint.toLowerCase().includes(q)) || (t.itchPoint && t.itchPoint.toLowerCase().includes(q)) || t.tags.some(tag => tag.toLowerCase().includes(q));
+      const fav = !favOnly || t.favorite;
+      return match && fav;
+    });
+    if (!filtered.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    list.innerHTML = filtered.map(t => {
+      const sourceBadge = t.source === '每日采集' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600">每日采集</span>' : (t.source === '内置' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">内置</span>' : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-500">自定义</span>');
+      const decompose = '<div class="mt-3 space-y-1.5 text-xs text-stone-600 bg-beige-50 rounded-xl p-3">' +
+        '<div><span class="font-medium text-stone-800">痛点：</span>' + escapeHtml(t.painPoint || '—') + '</div>' +
+        '<div><span class="font-medium text-stone-800">痒点：</span>' + escapeHtml(t.itchPoint || '—') + '</div>' +
+        '<div><span class="font-medium text-stone-800">卖点：</span>' + (t.sellingPoints || []).map(s => '<span class="inline-block bg-white border border-beige-200 rounded px-1.5 py-0.5 mr-1 mb-1">' + escapeHtml(s) + '</span>').join('') + '</div>' +
+        '<div><span class="font-medium text-stone-800">结尾：</span>' + escapeHtml(t.ending) + '</div>' +
+      '</div>';
+      return '<div class="card p-4 border border-beige-200 hover:shadow-md transition">' +
+        '<div class="flex items-start justify-between mb-2">' +
+          '<h4 class="font-bold text-stone-800 line-clamp-1">' + escapeHtml(t.title) + '</h4>' +
+          '<button class="text-stone-300 hover:text-rose-400 ' + (t.favorite ? 'text-rose-400' : '') + '" onclick="app.toggleFavTemplate(\'' + t.id + '\')"><i data-lucide="heart" class="w-4 h-4 ' + (t.favorite ? 'fill-current' : '') + '"></i></button>' +
+        '</div>' +
+        '<p class="text-sm text-stone-600 line-clamp-2 mb-1">' + escapeHtml(t.hook) + '</p>' +
+        '<div class="flex flex-wrap gap-1 mb-1">' + t.tags.map(tag => '<span class="tag text-xs px-2 py-0.5 rounded-full">#' + escapeHtml(tag) + '</span>').join('') + '</div>' +
+        decompose +
+        '<div class="flex items-center justify-between mt-3">' +
+          '<div>' + sourceBadge + '</div>' +
+          '<div class="flex gap-1">' +
+            '<button class="p-1.5 rounded-lg hover:bg-beige-100 text-stone-400" onclick="app.viewTemplate(\'' + t.id + '\')"><i data-lucide="eye" class="w-4 h-4"></i></button>' +
+            '<button class="p-1.5 rounded-lg hover:bg-beige-100 text-stone-400" onclick="app.editTemplate(\'' + t.id + '\')"><i data-lucide="pencil" class="w-4 h-4"></i></button>' +
+            '<button class="p-1.5 rounded-lg hover:bg-red-50 text-red-400" onclick="app.confirmDeleteTemplate(\'' + t.id + '\')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    refreshIcons();
+  }
+
+  function toggleFavTemplate(id) {
+    const t = state.templates.find(x => x.id === id);
+    t.favorite = !t.favorite;
+    save(KEYS.templates, state.templates);
+    renderTemplates();
+  }
+
+  function confirmDeleteTemplate(id) {
+    const t = state.templates.find(x => x.id === id);
+    openConfirmModal('删除模板', '确定删除模板「' + t.title + '」吗？删除后不可恢复。', () => {
+      state.templates = state.templates.filter(t => t.id !== id);
+      save(KEYS.templates, state.templates);
+      renderTemplates();
+      toast('模板已删除');
+    });
+  }
+
+  function viewTemplate(id) {
+    const t = state.templates.find(x => x.id === id);
+    document.getElementById('detail-title').textContent = t.title;
+    document.getElementById('detail-body').innerHTML = '<p><strong>钩子：</strong>' + escapeHtml(t.hook) + '</p>' +
+      '<p><strong>痛点：</strong>' + escapeHtml(t.painPoint || '—') + '</p>' +
+      '<p><strong>痒点：</strong>' + escapeHtml(t.itchPoint || '—') + '</p>' +
+      '<p><strong>卖点：</strong></p><ul class="list-disc pl-5">' + (t.sellingPoints || []).map(s => '<li>' + escapeHtml(s) + '</li>').join('') + '</ul>' +
+      '<p><strong>正文结构：</strong></p><p>' + escapeHtml(t.body) + '</p>' +
+      '<p><strong>结尾引导：</strong>' + escapeHtml(t.ending) + '</p>' +
+      '<p><strong>标签：</strong>' + t.tags.map(tag => '#' + escapeHtml(tag)).join(' ') + '</p>';
+    document.getElementById('detail-modal').classList.remove('hidden');
+    document.getElementById('detail-modal').classList.add('flex');
+  }
+
+  function openTemplateEditModal(id) {
+    const t = state.templates.find(x => x.id === id);
+    document.getElementById('template-edit-id').value = id;
+    document.getElementById('template-edit-title').value = t.title;
+    document.getElementById('template-edit-hook').value = t.hook;
+    document.getElementById('template-edit-pain').value = t.painPoint || '';
+    document.getElementById('template-edit-itch').value = t.itchPoint || '';
+    document.getElementById('template-edit-points').value = (t.sellingPoints || []).join('\n');
+    document.getElementById('template-edit-body').value = t.body;
+    document.getElementById('template-edit-ending').value = t.ending;
+    document.getElementById('template-edit-tags').value = (t.tags || []).join(' ');
+    document.getElementById('template-edit-modal').classList.remove('hidden');
+    document.getElementById('template-edit-modal').classList.add('flex');
+  }
+
+  function closeTemplateEditModal() {
+    document.getElementById('template-edit-modal').classList.add('hidden');
+    document.getElementById('template-edit-modal').classList.remove('flex');
+  }
+
+  function saveTemplateEdit() {
+    const id = document.getElementById('template-edit-id').value;
+    const t = state.templates.find(x => x.id === id);
+    t.title = document.getElementById('template-edit-title').value.trim();
+    t.hook = document.getElementById('template-edit-hook').value.trim();
+    t.painPoint = document.getElementById('template-edit-pain').value.trim();
+    t.itchPoint = document.getElementById('template-edit-itch').value.trim();
+    t.sellingPoints = document.getElementById('template-edit-points').value.split(/\n|，|,/).map(s => s.trim()).filter(Boolean);
+    t.body = document.getElementById('template-edit-body').value.trim();
+    t.ending = document.getElementById('template-edit-ending').value.trim();
+    t.tags = document.getElementById('template-edit-tags').value.split(/\s+|,|，/).map(s => s.replace('#','').trim()).filter(Boolean);
+    save(KEYS.templates, state.templates);
+    closeTemplateEditModal();
+    renderTemplates();
+    updateScriptTemplateOptions();
+    toast('模板已更新');
+  }
+
+  function exportTemplates() {
+    downloadJson(state.templates, 'dwxh_templates_' + dateStr() + '.json');
+  }
+
+  function importTemplates(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (Array.isArray(data)) {
+          state.templates = data;
+          save(KEYS.templates, state.templates);
+          renderTemplates();
+          toast('模板导入成功');
+        } else {
+          toast('文件格式错误');
+        }
+      } catch (e) { toast('解析失败'); }
+      input.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  // Scripts
+  let currentScriptId = null;
+  let currentScriptFormat = 'douyin';
+
+  function updateScriptTemplateOptions() {
+    const sel = document.getElementById('script-template');
+    if (!sel) return;
+    sel.innerHTML = state.templates.map(t => '<option value="' + t.id + '">' + escapeHtml(t.title) + '</option>').join('');
+  }
+
+  function inferAudience(theme) {
+    if (!theme) return '有需求的姐妹';
+    const t = theme.toLowerCase();
+    if (/超声炮|热玛吉|抗衰|下垂|松弛/.test(t)) return '30+脸开始下垂的姐妹';
+    if (/玻尿酸|法令纹|轮廓|凹陷|填充/.test(t)) return '有凹陷、法令纹困扰的姐妹';
+    if (/光子|水光|熬夜|暗沉|毛孔|提亮/.test(t)) return '熬夜肌、暗沉脸的姐妹';
+    if (/试管|备孕|AMH|多囊|促排|取卵|移植/.test(t)) return '正在备孕的姐妹';
+    if (/双眼皮|眼袋|眼/.test(t)) return '想改善眼型的姐妹';
+    return '有需求的姐妹';
+  }
+
+  function autoInferAudience() {
+    const theme = document.getElementById('script-theme').value.trim();
+    const audienceInput = document.getElementById('script-audience');
+    if (!audienceInput.dataset.userEdited) {
+      audienceInput.placeholder = inferAudience(theme);
+    }
+  }
+
+  function updateScriptFramework() {
+    const tplId = document.getElementById('script-template')?.value;
+    const tpl = state.templates.find(t => t.id === tplId);
+    const card = document.getElementById('script-framework-card');
+    const box = document.getElementById('script-framework');
+    if (!tpl || !card || !box) return;
+    card.classList.remove('hidden');
+    box.innerHTML =
+      '<div><span class="font-medium text-stone-800">钩子结构：</span>' + escapeHtml(tpl.hook) + '</div>' +
+      '<div><span class="font-medium text-stone-800">痛点切入：</span>' + escapeHtml(tpl.painPoint || '（未设置）') + '</div>' +
+      '<div><span class="font-medium text-stone-800">痒点设计：</span>' + escapeHtml(tpl.itchPoint || '（未设置）') + '</div>' +
+      '<div><span class="font-medium text-stone-800">卖点排列：</span>' + (tpl.sellingPoints || []).map(s => '·' + escapeHtml(s)).join(' ') + '</div>' +
+      '<div><span class="font-medium text-stone-800">正文结构：</span>' + escapeHtml(tpl.body) + '</div>' +
+      '<div><span class="font-medium text-stone-800">结尾转化：</span>' + escapeHtml(tpl.ending) + '</div>' +
+      '<div><span class="font-medium text-stone-800">标签组合：</span>' + (tpl.tags || []).map(tag => '#' + escapeHtml(tag)).join(' ') + '</div>';
+  }
+
+  function setScriptFormat(fmt) {
+    currentScriptFormat = fmt;
+    document.getElementById('fmt-douyin').className = fmt === 'douyin' ? 'px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm' : 'px-3 py-1 rounded-md text-xs font-medium text-stone-500';
+    document.getElementById('fmt-xhs').className = fmt === 'xhs' ? 'px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm' : 'px-3 py-1 rounded-md text-xs font-medium text-stone-500';
+    document.getElementById('fmt-both').className = fmt === 'both' ? 'px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm' : 'px-3 py-1 rounded-md text-xs font-medium text-stone-500';
+    renderScriptOutput();
+  }
+
+  function fillPlaceholders(text, theme, audience) {
+    const effect = theme;
+    return text.replace(/\[项目\]/g, theme).replace(/\[人群\]/g, audience).replace(/\[效果\]/g, effect);
+  }
+
+  function highlightBanned(text) {
+    let html = escapeHtml(text);
+    let count = 0;
+    BANNED_WORDS.forEach(word => {
+      const regex = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      html = html.replace(regex, m => { count++; return '<span class="banned">' + m + '</span>'; });
+    });
+    return { html, count };
+  }
+
+  function applyFramework(tpl, theme, audience) {
+    return {
+      hook: fillPlaceholders(tpl.hook, theme, audience),
+      pain: tpl.painPoint ? fillPlaceholders(tpl.painPoint, theme, audience) : '',
+      itch: tpl.itchPoint ? fillPlaceholders(tpl.itchPoint, theme, audience) : '',
+      sellingPoints: (tpl.sellingPoints || []).map(p => fillPlaceholders(p, theme, audience)),
+      body: fillPlaceholders(tpl.body, theme, audience),
+      ending: fillPlaceholders(tpl.ending, theme, audience),
+      tags: (tpl.tags || []).slice(0, 5)
+    };
+  }
+
+  function generateDouyinScript(tpl, theme, audience) {
+    const f = applyFramework(tpl, theme, audience);
+    const parts = [];
+    parts.push(f.hook + '，' + f.pain);
+    if (f.itch) parts.push(f.itch);
+    parts.push(f.body);
+    if (f.sellingPoints.length) {
+      parts.push('这也是我选它的原因：' + f.sellingPoints.join('，'));
+    }
+    parts.push(f.ending);
+    return parts.join('。') + '。';
+  }
+
+  function generateXhsScript(tpl, theme, audience) {
+    const f = applyFramework(tpl, theme, audience);
+    let s = '✨ ' + f.hook + '\n\n';
+    if (f.pain) s += '😣 痛点\n' + f.pain + '\n\n';
+    if (f.itch) s += '💡 痒点\n' + f.itch + '\n\n';
+    s += '📝 正文\n' + f.body + '\n\n';
+    if (f.sellingPoints.length) s += '📌 卖点\n' + f.sellingPoints.map(p => '· ' + p).join('\n') + '\n\n';
+    s += '🎯 结尾\n' + f.ending + '\n\n';
+    s += f.tags.map(t => '#' + t).join(' ');
+    return s;
+  }
+
+  function generateScripts() {
+    const tplId = document.getElementById('script-template').value;
+    const theme = document.getElementById('script-theme').value.trim();
+    if (!theme) { toast('请输入新主题/内容中心'); return; }
+    let audience = document.getElementById('script-audience').value.trim();
+    if (!audience) audience = inferAudience(theme);
+    const tpl = state.templates.find(t => t.id === tplId);
+    if (!tpl) { toast('请先选择模板'); return; }
+
+    const douyin = generateDouyinScript(tpl, theme, audience);
+    const xhs = generateXhsScript(tpl, theme, audience);
+    const script = { id: uid('scr'), title: tpl.title + ' · ' + theme, theme, audience, templateId: tplId, douyin, xhs, createdAt: new Date().toISOString() };
+    state.scripts.unshift(script);
+    save(KEYS.scripts, state.scripts);
+    currentScriptId = script.id;
+    updateScriptFramework();
+    renderScriptOutput();
+    renderLibrary();
+    toast('文案已生成');
+  }
+
+  function copyScriptText(type) {
+    const s = state.scripts.find(x => x.id === currentScriptId);
+    if (!s) return;
+    const text = type === 'douyin' ? s.douyin : s.xhs;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板')).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function saveCurrentScriptToLibrary() {
+    toast('已保存到素材库');
+  }
+
+  function createDraftFromCurrentScript() {
+    const s = state.scripts.find(x => x.id === currentScriptId);
+    if (!s) return;
+    openDraftModal();
+    document.getElementById('draft-title').value = s.title;
+    document.getElementById('draft-douyin').value = s.douyin;
+    document.getElementById('draft-xhs').value = s.xhs;
+  }
+
+  function renderScriptOutput() {
+    const container = document.getElementById('scripts-results');
+    const empty = document.getElementById('scripts-empty');
+    const s = state.scripts.find(x => x.id === currentScriptId);
+    if (!s) { container.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+
+    const cards = [];
+    const showDouyin = currentScriptFormat === 'douyin' || currentScriptFormat === 'both';
+    const showXhs = currentScriptFormat === 'xhs' || currentScriptFormat === 'both';
+
+    if (showDouyin) {
+      const d = highlightBanned(s.douyin);
+      cards.push('<div class="bg-stone-50 rounded-xl p-4"><div class="flex items-center justify-between mb-2"><span class="font-bold text-stone-700">抖音口播稿</span><span class="text-red-500 text-xs">违禁词 ' + d.count + ' 个</span></div><div class="whitespace-pre-wrap text-sm text-stone-700 leading-relaxed mb-3">' + d.html + '</div><div class="flex gap-2"><button class="text-xs px-3 py-1.5 rounded-lg bg-white border border-beige-200 text-stone-600 hover:bg-stone-100" onclick="app.copyScriptText(\'douyin\')">复制</button><button class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100" onclick="app.createDraftFromCurrentScript()">发草稿</button></div></div>');
+    }
+    if (showXhs) {
+      const x = highlightBanned(s.xhs);
+      cards.push('<div class="bg-rose-50 rounded-xl p-4"><div class="flex items-center justify-between mb-2"><span class="font-bold text-stone-700">小红书种草笔记</span><span class="text-red-500 text-xs">违禁词 ' + x.count + ' 个</span></div><div class="whitespace-pre-wrap text-sm text-stone-700 leading-relaxed mb-3">' + x.html + '</div><div class="flex gap-2"><button class="text-xs px-3 py-1.5 rounded-lg bg-white border border-beige-200 text-stone-600 hover:bg-stone-100" onclick="app.copyScriptText(\'xhs\')">复制</button><button class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100" onclick="app.createDraftFromCurrentScript()">发草稿</button></div></div>');
+    }
+
+    container.innerHTML = '<div class="card p-4 border border-beige-200"><div class="flex items-center justify-between mb-3"><h4 class="font-bold text-stone-800">' + escapeHtml(s.title) + '</h4><button class="text-xs px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" onclick="app.saveCurrentScriptToLibrary()">保存到素材库</button></div><div class="space-y-4">' + cards.join('') + '</div></div>';
+  }
+
+  // Library
+  function renderLibrary() {
+    const list = document.getElementById('library-list');
+    const empty = document.getElementById('library-empty');
+    const q = (document.getElementById('library-search')?.value || '').toLowerCase();
+    const filtered = state.scripts.filter(s => !q || s.title.toLowerCase().includes(q) || s.douyin.includes(q) || s.xhs.includes(q));
+    if (!filtered.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    list.innerHTML = filtered.map(s => {
+      const h = highlightBanned(s.douyin + ' ' + s.xhs);
+      return '<div class="card p-4 border border-beige-200 flex flex-col md:flex-row md:items-center justify-between gap-4">' +
+        '<div class="flex-1 min-w-0">' +
+          '<h4 class="font-bold text-stone-800 truncate">' + escapeHtml(s.title) + '</h4>' +
+          '<p class="text-xs text-stone-400 mt-1">' + new Date(s.createdAt).toLocaleString() + ' · 违禁词 ' + h.count + ' 个</p>' +
+        '</div>' +
+        '<div class="flex gap-2">' +
+          '<button class="text-xs px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" onclick="app.viewScript(\'' + s.id + '\')">查看</button>' +
+          '<button class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100" onclick="app.createDraftFromScript(\'' + s.id + '\')">发草稿</button>' +
+          '<button class="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" onclick="app.deleteScript(\'' + s.id + '\')">删除</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function viewScript(id) {
+    const s = state.scripts.find(x => x.id === id);
+    const d = highlightBanned(s.douyin);
+    const x = highlightBanned(s.xhs);
+    document.getElementById('detail-title').textContent = s.title;
+    document.getElementById('detail-body').innerHTML = '<p><strong>项目：</strong>' + escapeHtml(s.project) + '</p>' +
+      '<p><strong>目标人群：</strong>' + escapeHtml(s.audience) + '</p>' +
+      '<p><strong>风格：</strong>' + escapeHtml(s.style) + '</p>' +
+      '<p><strong>抖音口播稿：</strong></p><div class="whitespace-pre-wrap bg-stone-50 p-3 rounded-xl">' + d.html + '</div>' +
+      '<p class="text-red-500 text-xs mt-1">抖音违禁词 ' + d.count + ' 个</p>' +
+      '<p><strong>小红书种草笔记：</strong></p><div class="whitespace-pre-wrap bg-rose-50 p-3 rounded-xl">' + x.html + '</div>' +
+      '<p class="text-red-500 text-xs mt-1">小红书违禁词 ' + x.count + ' 个</p>';
+    document.getElementById('detail-modal').classList.remove('hidden');
+    document.getElementById('detail-modal').classList.add('flex');
+  }
+
+  function deleteScript(id) {
+    if (!confirm('确定删除该素材？')) return;
+    state.scripts = state.scripts.filter(s => s.id !== id);
+    save(KEYS.scripts, state.scripts);
+    renderLibrary();
+    renderScriptOutput();
+  }
+
+  function createDraftFromScript(id) {
+    const s = state.scripts.find(x => x.id === id);
+    if (!s) return;
+    openDraftModal();
+    document.getElementById('draft-title').value = s.title;
+    document.getElementById('draft-douyin').value = s.douyin;
+    document.getElementById('draft-xhs').value = s.xhs;
+  }
+
+  function exportLibrary() {
+    downloadJson(state.scripts, 'dwxh_library_' + dateStr() + '.json');
+  }
+
+  // Drafts
+  function renderDrafts() {
+    const list = document.getElementById('drafts-list');
+    const empty = document.getElementById('drafts-empty');
+    if (!state.drafts.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    list.innerHTML = state.drafts.map(d => {
+      const badge = d.platform === '抖音' ? 'bg-stone-800 text-white' : (d.platform === '小红书' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white');
+      const accs = (d.accounts || []).map(id => {
+        const a = state.accounts.find(x => x.id === id);
+        return a ? '<span class="text-xs px-2 py-0.5 rounded-full bg-beige-100 text-stone-600">' + escapeHtml(a.name) + '</span>' : '';
+      }).join('');
+      return '<div class="card p-4 border border-beige-200">' +
+        '<div class="flex flex-col md:flex-row md:items-center justify-between gap-3">' +
+          '<div class="flex-1">' +
+            '<div class="flex items-center gap-2 mb-1">' +
+              '<span class="text-xs px-2 py-0.5 rounded-full ' + badge + '">' + d.platform + '</span>' +
+              '<h4 class="font-bold text-stone-800">' + escapeHtml(d.title) + '</h4>' +
+            '</div>' +
+            '<div class="flex flex-wrap gap-1 mb-2">' + accs + '</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-2">' +
+            '<select class="text-xs rounded-lg px-2 py-1.5 bg-white border border-beige-200" onchange="app.updateDraftStatus(\'' + d.id + '\', this.value)">' +
+              '<option value="草稿" ' + (d.status === '草稿' ? 'selected' : '') + '>草稿</option>' +
+              '<option value="待拍摄" ' + (d.status === '待拍摄' ? 'selected' : '') + '>待拍摄</option>' +
+              '<option value="已发布" ' + (d.status === '已发布' ? 'selected' : '') + '>已发布</option>' +
+            '</select>' +
+            '<button class="text-xs px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" onclick="app.copyDraft(\'' + d.id + '\', \'douyin\')">复制抖音</button>' +
+            '<button class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100" onclick="app.copyDraft(\'' + d.id + '\', \'xhs\')">复制小红书</button>' +
+            '<button class="p-1.5 rounded-lg hover:bg-red-50 text-red-400" onclick="app.deleteDraft(\'' + d.id + '\')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    refreshIcons();
+  }
+
+  function openDraftModal() {
+    document.getElementById('draft-modal').classList.remove('hidden');
+    document.getElementById('draft-modal').classList.add('flex');
+    document.getElementById('draft-title').value = '';
+    document.getElementById('draft-platform').value = '双平台';
+    document.getElementById('draft-douyin').value = '';
+    document.getElementById('draft-xhs').value = '';
+    document.getElementById('draft-status').value = '草稿';
+    const box = document.getElementById('draft-accounts');
+    box.innerHTML = state.accounts.map(a => {
+      const badge = a.platform === '抖音' ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-stone-800 text-white">抖音</span>' : '<span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500 text-white">小红书</span>';
+      return '<label class="flex items-center gap-2 text-sm text-stone-700 p-1.5 rounded-lg hover:bg-white cursor-pointer">' +
+        '<input type="checkbox" value="' + a.id + '" class="accent-rose-400 w-4 h-4">' +
+        '<div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ' + accountColorClass(a.platform) + '">' + escapeHtml(a.avatar || accountAvatar(a.name)) + '</div>' +
+        '<div class="flex-1 min-w-0"><div class="font-medium truncate">' + escapeHtml(a.name) + '</div><div class="flex gap-1 mt-0.5">' + badge + '<span class="text-xs text-stone-400">' + escapeHtml(a.group) + '</span></div></div>' +
+      '</label>';
+    }).join('');
+  }
+
+  function closeDraftModal() {
+    document.getElementById('draft-modal').classList.add('hidden');
+    document.getElementById('draft-modal').classList.remove('flex');
+  }
+
+  function saveDraft() {
+    const title = document.getElementById('draft-title').value.trim();
+    const platform = document.getElementById('draft-platform').value;
+    const douyin = document.getElementById('draft-douyin').value.trim();
+    const xhs = document.getElementById('draft-xhs').value.trim();
+    const status = document.getElementById('draft-status').value;
+    const checked = Array.from(document.querySelectorAll('#draft-accounts input:checked')).map(cb => cb.value);
+    if (!title) { toast('请输入标题'); return; }
+    state.drafts.unshift({ id: uid('drf'), title, platform, accounts: checked, douyin, xhs, status, createdAt: new Date().toISOString() });
+    save(KEYS.drafts, state.drafts);
+    closeDraftModal();
+    renderDrafts();
+    nav('drafts');
+    toast('草稿已创建');
+  }
+
+  function updateDraftStatus(id, status) {
+    const d = state.drafts.find(x => x.id === id);
+    d.status = status;
+    save(KEYS.drafts, state.drafts);
+  }
+
+  function copyDraft(id, type) {
+    const d = state.drafts.find(x => x.id === id);
+    const text = type === 'douyin' ? d.douyin : d.xhs;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板')).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      toast('已复制到剪贴板');
+    } catch (e) {
+      toast('复制失败，请手动复制');
+    }
+    document.body.removeChild(ta);
+  }
+
+  function deleteDraft(id) {
+    if (!confirm('确定删除该草稿？')) return;
+    state.drafts = state.drafts.filter(d => d.id !== id);
+    save(KEYS.drafts, state.drafts);
+    renderDrafts();
+  }
+
+  function closeDetailModal() {
+    document.getElementById('detail-modal').classList.add('hidden');
+    document.getElementById('detail-modal').classList.remove('flex');
+  }
+
+  // Backup / settings
+  function dateStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function downloadJson(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportAll() {
+    const all = {
+      accounts: state.accounts,
+      templates: state.templates,
+      scripts: state.scripts,
+      drafts: state.drafts,
+      settings: state.settings,
+      exportedAt: new Date().toISOString()
+    };
+    downloadJson(all, 'dwxh_backup_' + dateStr() + '.json');
+  }
+
+  function importAll(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (data.accounts) { state.accounts = data.accounts; save(KEYS.accounts, state.accounts); }
+        if (data.templates) { state.templates = data.templates; save(KEYS.templates, state.templates); }
+        if (data.scripts) { state.scripts = data.scripts; save(KEYS.scripts, state.scripts); }
+        if (data.drafts) { state.drafts = data.drafts; save(KEYS.drafts, state.drafts); }
+        if (data.settings) { state.settings = data.settings; save(KEYS.settings, state.settings); }
+        renderAll();
+        toast('备份导入成功');
+      } catch (e) { toast('文件解析失败'); }
+      input.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  function clearAll() {
+    if (!confirm('确定清空所有本地数据？此操作不可恢复！')) return;
+    Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+    state.accounts = [];
+    state.templates = [];
+    state.scripts = [];
+    state.drafts = [];
+    state.settings = { lastFetch: null };
+    renderAll();
+    toast('数据已清空');
+  }
+
+  // Expose global app object
+  window.app = {
+    nav,
+    openAccountModal,
+    closeAccountModal,
+    saveAccount,
+    editAccount: openAccountModal,
+    confirmDeleteAccount,
+    closeConfirmModal,
+    parseTemplate,
+    saveParsedTemplate,
+    toggleFavTemplate,
+    confirmDeleteTemplate,
+    viewTemplate,
+    editTemplate: openTemplateEditModal,
+    closeTemplateEditModal,
+    saveTemplateEdit,
+    exportTemplates,
+    importTemplates,
+    fetchDailyTemplates,
+    updateScriptTemplateOptions,
+    updateScriptFramework,
+    autoInferAudience,
+    generateScripts,
+    setScriptFormat,
+    copyScriptText,
+    saveCurrentScriptToLibrary,
+    createDraftFromScript,
+    createDraftFromCurrentScript,
+    renderScriptOutput,
+    viewScript,
+    deleteScript,
+    exportLibrary,
+    openDraftModal,
+    closeDraftModal,
+    saveDraft,
+    updateDraftStatus,
+    copyDraft,
+    deleteDraft,
+    closeDetailModal,
+    exportAll,
+    importAll,
+    clearAll,
+    renderAccounts,
+    renderTemplates,
+    renderLibrary,
+    renderDrafts
+  };
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
