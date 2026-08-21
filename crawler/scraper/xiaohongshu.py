@@ -216,8 +216,16 @@ class XiaohongshuScraper(BaseScraper):
         return data
 
     def _pass_threshold(self, item: Dict[str, Any]) -> bool:
-        """按阈值过滤"""
-        for key, min_val in self.thresholds.items():
-            if min_val and item.get(key, 0) < min_val:
+        """按阈值过滤。thresholds 的 key 是 likes_min，对应 item 的 likes。"""
+        key_map = {
+            "likes_min": "likes",
+            "comments_min": "comments",
+            "collections_min": "collections",
+            "shares_min": "shares",
+            "play_count_min": "play_count",
+        }
+        for threshold_key, min_val in self.thresholds.items():
+            item_key = key_map.get(threshold_key, threshold_key)
+            if min_val and item.get(item_key, 0) < min_val:
                 return False
         return True
