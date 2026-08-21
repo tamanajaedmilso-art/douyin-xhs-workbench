@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""
+抖音/小红书医美+试管婴儿爆款采集工具
+
+用法：
+    python main.py --run              # 手动执行一次采集
+    python main.py --schedule         # 启动定时每周采集（默认周一 9:00）
+    python main.py --export           # 导出已采集数据为 Excel/CSV
+    python main.py --stats            # 查看采集统计
+"""
+import argparse
+import os
+import sys
+import time
+from datetime import datetime
+from typing import Any, Dict, List
+
+from analyzer import ContentAnalyzer
+from exporter import Exporter
+from scraper import DouyinScraper, XiaohongshuScraper
+from storage import Storage
+from utils import ensure_dirs, load_config, now_str, setup_logging
+
+
+def run_collection(config: Dict[str, Any], logger) -> List[Dict[str, Any]]:
+    """执行一次完整采集"""
+    storage = Storage(config.get("data_dir", "./data"))
+    analyzer = ContentAnalyzer()
+    category_map = config.get("category_map", {})
+    all_items: List[Dict[str, Any]] = []
+
+    platforms = config.get("platforms", [])
+    keywords = config.get("keywords", [])
+    max_per_keyword = config.get("max_results_per_keyword", 20)
+
+    if "douyin" in platforms:
+        scraper = DouyinScraper(config, logger)
+        try:
+            scraper.start()
+            for kw in keywords:
+                items = scraper.search(kw, max_results=max_per_keyword)
+                for item in items:
+                    item["category"] = category_map.get(kw, "其他")
+                all_items.extend(items)
+        finally:
+            scraper.stop()
+
+    if "xiaohongshu" in platforms:
+        scraper = XiaohongshuScraper(config, logger)
+        try:
+            scraper.start()
+            for kw in keywords:
+                items = scraper.search(kw, max_results=max_per_keyword)
+                for item in items:
+                    item["category"] = category_map.get(kw, "其他")
+                all_items.extend(items)
+        finally:
+            scraper.stop()
+
+    # 结构拆解
+    analyzer.batch_analyze(all_items)
+
+    # 增量存储
+    added = storage.add_batch(all_items)
+    storage.save()
+
+    logger.info(f"本次采集完成：新增 {added} 条，本次获取 {len(all_items)} 条，累计 {len(storage.items)} 条")
+    return all_items
+
+
+def export_data(config: Dict[str, Any], logger, fmt: str = "both") -> Dict[str, str]:
+    """导出已采集数据"""
+    storage = Storage(config.get("data_dir", "./data"))
+    analyzer = ContentAnalyzer()
+    items = analyzer.batch_analyze(storage.items)
+    exporter = Exporter(config.get("output_dir", "./output"))
+    paths = exporter.export_by_platform(items, fmt=fmt)
+    for k, v in paths.items():
+        if v:
+            logger.info(f"已导出 {k.upper()}: {v}")
+    return paths
+
+
+def show_stats(config: Dict[str, Any], logger) -> None:
+    """显示采集统计"""
+    storage = Storage(config.get("data_dir", "./data"))
+    stats = storage.stats()
+    logger.info(f"采集统计：总计 {stats['total']} 条 | 抖音 {stats['douyin']} 条 | 小红书 {stats['xiaohongshu']} 条")
+
+
+def run_scheduler(config: Dict[str, Any], logger) -> None:
+    """启动定时任务"""
+    try:
+        import schedule
+    except ImportError:
+        logger.error("定时任务需要 schedule 库，请运行: pip install schedule")
+        return
+
+    sched = config.get("schedule", {})
+    day = sched.get("day_of_week", "mon").lower()
+    hour = sched.get("hour", 9)
+    minute = sched.get("minute", 0)
+
+    days = {
+        "mon": schedule.every().monday,
+        "tue": schedule.every().tuesday,
+        "wed": schedule.every().wednesday,
+        "thu": schedule.every().thursday,
+        "fri": schedule.every().friday,
+        "sat": schedule.every().saturday,
+        "sun": schedule.every().sunday,
+    }
+    job = days.get(day, schedule.every().monday)
+    job.at(f"{hour:02d}:{minute:02d}").do(lambda: run_collection(config, logger))
+
+    logger.info(f"定时任务已启动：每周 {day} {hour:02d}:{minute:02d} 执行采集")
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="抖音/小红书爆款内容采集工具")
+    parser.add_argument("--run", action="store_true", help="手动执行一次采集")
+    parser.add_argument("--export", action="store_true", help="导出已采集数据")
+    parser.add_argument("--stats", action="store_true", help="查看采集统计")
+    parser.add_argument("--schedule", action="store_true", help="启动定时每周采集")
+    parser.add_argument("--format", choices=["csv", "xlsx", "both"], default="both", help="导出格式")
+    parser.add_argument("--config", default="config.json", help="配置文件路径")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.config):
+        print(f"配置文件不存在: {args.config}")
+        sys.exit(1)
+
+    config = load_config(args.config)
+    ensure_dirs([
+        config.get("cookies_dir", "./cookies"),
+        config.get("data_dir", "./data"),
+        config.get("output_dir", "./output"),
+    ])
+    logger = setup_logging("INFO")
+
+    if args.run:
+        items = run_collection(config, logger)
+        export_data(config, logger, fmt=args.format)
+    elif args.export:
+        export_data(config, logger, fmt=args.format)
+    elif args.stats:
+        show_stats(config, logger)
+    elif args.schedule:
+        run_scheduler(config, logger)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

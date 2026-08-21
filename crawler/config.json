@@ -1,0 +1,62 @@
+{
+  "platforms": ["douyin", "xiaohongshu"],
+  "keywords": [
+    "医美",
+    "试管",
+    "试管婴儿",
+    "备孕",
+    "促排",
+    "移植",
+    "抗衰",
+    "童颜针",
+    "NAD点滴"
+  ],
+  "category_map": {
+    "医美": "医美",
+    "抗衰": "医美",
+    "童颜针": "医美",
+    "NAD点滴": "医美",
+    "试管": "试管婴儿",
+    "试管婴儿": "试管婴儿",
+    "备孕": "试管婴儿",
+    "促排": "试管婴儿",
+    "移植": "试管婴儿"
+  },
+  "thresholds": {
+    "douyin": {
+      "likes_min": 1000,
+      "comments_min": 50,
+      "collections_min": 0,
+      "shares_min": 0,
+      "play_count_min": 10000
+    },
+    "xiaohongshu": {
+      "likes_min": 500,
+      "comments_min": 50,
+      "collections_min": 100
+    }
+  },
+  "max_results_per_keyword": 20,
+  "delay": {
+    "min_seconds": 3,
+    "max_seconds": 8,
+    "scroll_pause_min": 1.5,
+    "scroll_pause_max": 3.5
+  },
+  "headless": false,
+  "cookies_dir": "./cookies",
+  "data_dir": "./data",
+  "output_dir": "./output",
+  "browser": {
+    "viewport_width": 1280,
+    "viewport_height": 800,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "locale": "zh-CN"
+  },
+  "schedule": {
+    "enabled": false,
+    "day_of_week": "mon",
+    "hour": 9,
+    "minute": 0
+  }
+}
