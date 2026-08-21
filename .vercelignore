@@ -1,0 +1,19 @@
+# 依赖和虚拟环境
+node_modules/
+crawler/venv/
+.tools/
+
+# 采集产生的数据和输出
+crawler/data/
+crawler/output/
+crawler/cookies/
+crawler/browser_profile/
+crawler/__pycache__/
+crawler/scraper/__pycache__/
+
+# 日志和临时文件
+*.log
+.DS_Store
+.vercel/
+index.html.bak
+vercel
