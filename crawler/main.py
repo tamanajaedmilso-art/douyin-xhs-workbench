@@ -88,6 +88,40 @@ def show_stats(config: Dict[str, Any], logger) -> None:
     logger.info(f"采集统计：总计 {stats['total']} 条 | 抖音 {stats['douyin']} 条 | 小红书 {stats['xiaohongshu']} 条")
 
 
+def run_login_only(config: Dict[str, Any], logger) -> None:
+    """只打开浏览器并等待登录，用于首次获取登录态"""
+    platforms = config.get("platforms", [])
+    if "douyin" in platforms:
+        scraper = DouyinScraper(config, logger)
+        try:
+            scraper.start()
+            scraper.safe_goto("https://www.douyin.com", wait_until="domcontentloaded")
+            logger.info("[login] 抖音已打开，请手动登录，完成后按回车...")
+            try:
+                input("按回车继续...")
+            except EOFError:
+                logger.warning("非交互式环境，等待 60 秒后关闭...")
+                time.sleep(60)
+        finally:
+            scraper.stop()
+
+    if "xiaohongshu" in platforms:
+        scraper = XiaohongshuScraper(config, logger)
+        try:
+            scraper.start()
+            scraper.safe_goto("https://www.xiaohongshu.com", wait_until="domcontentloaded")
+            logger.info("[login] 小红书已打开，请手动登录，完成后按回车...")
+            try:
+                input("按回车继续...")
+            except EOFError:
+                logger.warning("非交互式环境，等待 60 秒后关闭...")
+                time.sleep(60)
+        finally:
+            scraper.stop()
+
+    logger.info("[login] 登录态已保存，可以运行 python main.py --run 开始采集")
+
+
 def run_scheduler(config: Dict[str, Any], logger) -> None:
     """启动定时任务"""
     try:
@@ -122,6 +156,7 @@ def run_scheduler(config: Dict[str, Any], logger) -> None:
 def main():
     parser = argparse.ArgumentParser(description="抖音/小红书爆款内容采集工具")
     parser.add_argument("--run", action="store_true", help="手动执行一次采集")
+    parser.add_argument("--login", action="store_true", help="只打开浏览器保存登录态")
     parser.add_argument("--export", action="store_true", help="导出已采集数据")
     parser.add_argument("--stats", action="store_true", help="查看采集统计")
     parser.add_argument("--schedule", action="store_true", help="启动定时每周采集")
@@ -138,12 +173,22 @@ def main():
         config.get("cookies_dir", "./cookies"),
         config.get("data_dir", "./data"),
         config.get("output_dir", "./output"),
+        config.get("user_data_dir", "./browser_profile"),
     ])
     logger = setup_logging("INFO")
+
+    # 环境检查
+    if config.get("headless") and not os.environ.get("DISPLAY"):
+        logger.warning(
+            "当前设置为 headless 模式且未检测到 DISPLAY 环境变量，"
+            "若运行失败请将 config.json 中的 headless 改为 false，并在带桌面的电脑上执行。"
+        )
 
     if args.run:
         items = run_collection(config, logger)
         export_data(config, logger, fmt=args.format)
+    elif args.login:
+        run_login_only(config, logger)
     elif args.export:
         export_data(config, logger, fmt=args.format)
     elif args.stats:

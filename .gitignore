@@ -3,3 +3,10 @@ node_modules/
 .DS_Store
 *.log
 .vercel
+crawler/venv/
+crawler/__pycache__/
+crawler/scraper/__pycache__/
+crawler/data/
+crawler/output/
+crawler/cookies/
+crawler/browser_profile/

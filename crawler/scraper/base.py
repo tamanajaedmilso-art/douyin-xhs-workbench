@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List
@@ -36,34 +37,53 @@ class BaseScraper(ABC):
                 f"--window-size={self.config['browser']['viewport_width']},{self.config['browser']['viewport_height']}",
             ],
         }
+        # 使用系统已安装的 Chrome（Mac/Windows 上可复用用户登录态）
+        if self.config.get("use_system_chrome"):
+            opts["channel"] = "chrome"
         return opts
 
     def start(self) -> None:
-        """启动浏览器"""
+        """启动浏览器，优先使用持久化上下文以保留登录态"""
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(**self._build_launch_options())
-        self.context = self.browser.new_context(
-            viewport={
-                "width": self.config["browser"]["viewport_width"],
-                "height": self.config["browser"]["viewport_height"],
-            },
-            user_agent=self.config["browser"].get("user_agent"),
-            locale=self.config["browser"].get("locale", "zh-CN"),
-            timezone_id="Asia/Shanghai",
-        )
-        # 注入脚本隐藏 webdriver 痕迹
-        self.context.add_init_script("""
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            });
-            window.chrome = { runtime: {} };
-        """)
-        self.page = self.context.new_page()
-        self._load_cookies()
+
+        if self.config.get("persistent_context"):
+            user_data_dir = Path(self.config.get("user_data_dir", "./browser_profile")) / self.platform
+            ensure_dirs([str(user_data_dir)])
+            self.context = self.playwright.chromium.launch_persistent_context(
+                user_data_dir=str(user_data_dir),
+                **self._build_launch_options(),
+                viewport={
+                    "width": self.config["browser"]["viewport_width"],
+                    "height": self.config["browser"]["viewport_height"],
+                },
+                locale=self.config["browser"].get("locale", "zh-CN"),
+                timezone_id="Asia/Shanghai",
+            )
+            self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+        else:
+            self.browser = self.playwright.chromium.launch(**self._build_launch_options())
+            self.context = self.browser.new_context(
+                viewport={
+                    "width": self.config["browser"]["viewport_width"],
+                    "height": self.config["browser"]["viewport_height"],
+                },
+                user_agent=self.config["browser"].get("user_agent"),
+                locale=self.config["browser"].get("locale", "zh-CN"),
+                timezone_id="Asia/Shanghai",
+            )
+            # 注入脚本隐藏 webdriver 痕迹
+            self.context.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+                window.chrome = { runtime: {} };
+            """)
+            self.page = self.context.new_page()
+            self._load_cookies()
 
     def stop(self) -> None:
         """关闭浏览器并保存 Cookie"""
-        if self.context and self.page:
+        if not self.config.get("persistent_context") and self.context and self.page:
             self._save_cookies()
         if self.context:
             self.context.close()
@@ -108,6 +128,20 @@ class BaseScraper(ABC):
             distance = random.randint(400, 1000)
             self.page.evaluate(f"window.scrollBy(0, {distance})")
             random_delay(delay.get("scroll_pause_min", 1), delay.get("scroll_pause_max", 2))
+
+    def wait_for_manual_login(self) -> None:
+        """检测到需要登录时，暂停并提示用户手动处理"""
+        if self.is_login_page():
+            self.logger.warning(
+                f"[{self.platform}] 检测到登录页，请在新打开的浏览器窗口中完成登录/验证码，"
+                f"完成后回到终端按回车继续..."
+            )
+            try:
+                input("按回车继续...")
+            except EOFError:
+                # 非交互式环境，等待 60 秒
+                self.logger.warning("非交互式环境，等待 60 秒...")
+                time.sleep(60)
 
     def is_login_page(self) -> bool:
         """检测当前是否在登录页，子类可覆盖"""

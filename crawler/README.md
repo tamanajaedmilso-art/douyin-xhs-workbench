@@ -39,7 +39,10 @@ playwright install chromium
 | `thresholds` | 各平台点赞/评论/收藏/播放量阈值，低于阈值会被过滤 |
 | `max_results_per_keyword` | 每个关键词最多采集多少条 |
 | `delay` | 请求间隔、滚动停顿时间，值越大越安全 |
-| `headless` | `false` 会弹出浏览器（推荐调试/首次登录），`true` 为无头模式 |
+| `headless` | `false` 会弹出浏览器（推荐首次登录），`true` 为无头模式 |
+| `use_system_chrome` | `true` 使用系统已安装的 Chrome，更容易复用登录态 |
+| `persistent_context` | `true` 使用持久化浏览器上下文，登录态保存更稳定 |
+| `user_data_dir` | 持久化浏览器配置文件目录 |
 | `cookies_dir` | 登录 Cookie 保存目录 |
 | `data_dir` | 采集数据保存目录 |
 | `output_dir` | Excel/CSV 输出目录 |
@@ -48,13 +51,15 @@ playwright install chromium
 
 ## 3. 首次登录
 
-抖音和小红书都需要登录后才能稳定搜索。首次运行时会弹出浏览器，请手动扫码或短信登录。
+抖音和小红书都需要登录后才能稳定搜索。推荐使用专门的登录模式：
 
 ```bash
-python main.py --run
+python main.py --login
 ```
 
-登录成功后，Cookie 会自动保存到 `cookies/` 目录，下次运行会复用。
+这会弹出你系统里已安装的 Chrome 浏览器，依次打开抖音和小红书登录页。你手动扫码/短信登录完成后，按回车即可。
+
+登录态会保存在 `browser_profile/` 和 `cookies/` 目录，后续运行 `python main.py --run` 会自动复用。
 
 如果 Cookie 过期导致跳到登录页，脚本会暂停并提示你手动登录，按回车继续。
 
@@ -62,7 +67,13 @@ python main.py --run
 
 ## 4. 运行方式
 
-### 4.1 手动采集一次
+### 4.1 只保存登录态
+
+```bash
+python main.py --login
+```
+
+### 4.2 手动采集一次
 
 ```bash
 python main.py --run
@@ -75,19 +86,19 @@ python main.py --run
 4. 增量保存到 `data/collected_items.json`
 5. 导出 Excel 和 CSV 到 `output/` 目录
 
-### 4.2 只导出已有数据
+### 4.3 只导出已有数据
 
 ```bash
 python main.py --export
 ```
 
-### 4.3 查看采集统计
+### 4.4 查看采集统计
 
 ```bash
 python main.py --stats
 ```
 
-### 4.4 定时每周采集
+### 4.5 定时每周采集
 
 修改 `config.json` 中的 `schedule` 字段，然后运行：
 
@@ -99,7 +110,30 @@ python main.py --schedule
 
 ---
 
-## 5. 导出字段说明
+## 5. macOS 用户特别提示
+
+如果你在当前这台 Mac 上运行：
+
+1. 确保 `config.json` 中：
+   - `"headless": false`（必须，否则看不到浏览器）
+   - `"use_system_chrome": true`（使用你刚才登录过的 Chrome）
+   - `"persistent_context": true`（保留登录态）
+
+2. 首次运行先登录：
+   ```bash
+   python main.py --login
+   ```
+
+3. 登录成功后，再运行采集：
+   ```bash
+   python main.py --run
+   ```
+
+4. 如果爬虫打开的是全新 Chrome 窗口（没有你的登录态），说明你用的是 Playwright 自带的 Chromium。检查 `use_system_chrome` 是否为 `true`。
+
+---
+
+## 6. 导出字段说明
 
 Excel/CSV 包含以下列：
 
@@ -126,7 +160,7 @@ Excel/CSV 包含以下列：
 
 ---
 
-## 6. 自定义关键词和阈值
+## 7. 自定义关键词和阈值
 
 编辑 `config.json`：
 
@@ -155,7 +189,7 @@ Excel/CSV 包含以下列：
 
 ---
 
-## 7. 常见问题
+## 8. 常见问题
 
 ### Q1：运行后浏览器闪退/打不开页面
 - 检查是否执行了 `playwright install chromium`
@@ -177,7 +211,7 @@ Excel/CSV 包含以下列：
 
 ---
 
-## 8. 项目结构
+## 9. 项目结构
 
 ```
 crawler/
@@ -197,6 +231,6 @@ crawler/
 
 ---
 
-## 9. 免责声明
+## 10. 免责声明
 
 本工具仅供学习研究使用。用户需自行承担因使用本工具产生的全部责任，包括但不限于账号封禁、法律纠纷等。开发者不对任何使用后果负责。

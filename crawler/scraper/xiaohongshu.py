@@ -26,9 +26,7 @@ class XiaohongshuScraper(BaseScraper):
             return []
 
         time.sleep(3)
-        if self.is_login_page():
-            self.logger.warning("[xiaohongshu] 检测到登录页，请手动登录后按回车继续...")
-            input("按回车继续...")
+        self.wait_for_manual_login()
 
         results = []
         seen_urls = set()

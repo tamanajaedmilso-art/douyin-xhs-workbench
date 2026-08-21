@@ -44,6 +44,9 @@
     "scroll_pause_max": 3.5
   },
   "headless": false,
+  "use_system_chrome": true,
+  "persistent_context": true,
+  "user_data_dir": "./browser_profile",
   "cookies_dir": "./cookies",
   "data_dir": "./data",
   "output_dir": "./output",

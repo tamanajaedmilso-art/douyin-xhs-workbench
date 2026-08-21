@@ -29,9 +29,7 @@ class DouyinScraper(BaseScraper):
 
         # 等待页面加载，必要时过登录/验证
         time.sleep(3)
-        if self.is_login_page():
-            self.logger.warning("[douyin] 检测到登录页，请手动登录后按回车继续...")
-            input("按回车继续...")
+        self.wait_for_manual_login()
 
         results = []
         seen_urls = set()
