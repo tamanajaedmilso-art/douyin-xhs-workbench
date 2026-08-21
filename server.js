@@ -10,14 +10,20 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY || 'changeme';
 
 // 允许的前端域名（本地开发 + 已部署的 Vercel / GitHub Pages）
+// 可通过 FRONTEND_ORIGINS 环境变量追加，多个用逗号分隔
+const EXTRA_ORIGINS = (process.env.FRONTEND_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 const ALLOWED_ORIGINS = [
   'http://localhost:8080',
   'http://localhost:3000',
   'http://127.0.0.1:8080',
   'https://douyin-xhs-workbench.vercel.app',
-  'https://douyin-xhs-workbench-ldalxhxgn-tamanajaedmilso-9553s-projects.vercel.app',
+  'https://douyin-xhs-workbench-hujy849a3-tamanajaedmilso-9553s-projects.vercel.app',
   'https://tamanajaedmilso-art.github.io',
   'https://tamanajaedmilso-art.github.io/douyin-xhs-workbench',
+  ...EXTRA_ORIGINS,
 ];
 
 app.use(cors({

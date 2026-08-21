@@ -1,6 +1,14 @@
 # 抖音&小红书多账号爆款内容工作台
 
-一个专为医美 / 试管备孕 / 个人 IP 运营者设计的静态内容管理工具。无需后端、无需构建，单个 HTML 文件即可运行，数据完全保存在浏览器 `localStorage` 中。
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/tamanajaedmilso-art/douyin-xhs-workbench)
+
+一个专为医美 / 试管备孕 / 个人 IP 运营者设计的内容管理工具。
+
+- **前端**：单个 `index.html`，纯 HTML + Tailwind CSS + JavaScript，数据默认保存在浏览器 `localStorage`。
+- **后端（可选）**：Node.js + Express + SQLite，用于接收本地爬虫数据，让网页自动拉取最新爆款模板。
+- **爬虫（可选）**：Python + Playwright，自动采集抖音/小红书医美、试管备孕赛道爆款内容。
+
+无需后端也能单独使用；部署后端后可实现「爬虫自动采集 → 网页自动同步」。
 
 ---
 
@@ -46,11 +54,9 @@
 
 ## 技术栈
 
-- HTML5 + Tailwind CSS CDN
-- Google Fonts：Noto Sans SC
-- Lucide Icons CDN
-- 原生 JavaScript（IIFE），全局暴露 `app` 对象
-- 浏览器 localStorage 持久化
+- 前端：HTML5 + Tailwind CSS CDN + 原生 JavaScript（IIFE），数据保存在浏览器 `localStorage`
+- 后端：Node.js + Express + SQLite
+- 爬虫：Python + Playwright
 
 ---
 
@@ -58,12 +64,20 @@
 
 ```
 douyin-xhs-workbench/
-├── index.html   # 完整的单页应用（HTML + CSS + JS）
-├── README.md    # 使用与部署说明
-├── vercel.json  # Vercel 部署配置
-├── vercel       # 本地 Vercel CLI 启动脚本
-├── .gitignore   # 忽略 .tools/ 等本地环境
-└── .tools/      # 本地 Node.js + Vercel CLI（自动生成，不提交）
+├── index.html              # 完整的单页应用（HTML + CSS + JS）
+├── server.js               # Node.js 后端（Express + SQLite）
+├── package.json            # 后端依赖
+├── render.yaml             # Render 一键部署配置
+├── README.md               # 使用与部署说明
+├── vercel.json             # Vercel 部署配置
+├── vercel                  # 本地 Vercel CLI 启动脚本
+├── crawler/                # Python 爬虫
+│   ├── main.py
+│   ├── sync.py             # 向后端同步数据
+│   ├── config.json         # 关键词、阈值、后端地址等配置
+│   └── ...
+├── .gitignore              # 忽略 .tools/、data/ 等本地环境
+└── .tools/                 # 本地 Node.js + Vercel CLI（自动生成，不提交）
 ```
 
 ---
@@ -82,7 +96,7 @@ python3 -m http.server 8080
 
 ---
 
-## 使用项目自带的 Vercel CLI 部署（推荐）
+## 使用项目自带的 Vercel CLI 部署前端（推荐）
 
 项目已内置 Node.js + Vercel CLI，无需你全局安装。
 
@@ -99,6 +113,86 @@ cd douyin-xhs-workbench
 部署完成后，Vercel 会给出 `.vercel.app` 公开访问链接。
 
 > `.tools/` 目录是本地 CLI 运行环境，已加入 `.gitignore`，不需要提交到 GitHub。
+
+---
+
+## 后端部署（可选，用于爬虫自动同步）
+
+如果你希望本地爬虫跑完后，网页能自动拉取最新爆款数据，需要部署一个小后端。
+
+### 方案：一键部署到 Render（免费）
+
+1. 访问 GitHub 仓库页面，找到 README 顶部的 **「Deploy to Render」** 按钮。
+2. 点击后按提示登录/注册 Render 账号。
+3. Render 会自动读取 `render.yaml` 创建 Web Service 和 1GB 磁盘。
+4. 部署完成后，Render 会给你类似 `https://douyin-xhs-workbench-backend-xxx.onrender.com` 的域名。
+5. 复制这个域名，填入网页「备份/设置」→「后端同步设置」→「后端地址」。
+6. 在 Render Dashboard → Environment 里找到 `API_KEY`，复制到网页的「API Key」输入框。
+7. 勾选「进入爆款模板时自动同步」，点击「保存配置」。
+
+### 后端环境变量
+
+| 变量 | 说明 | 默认值 |
+|---|---|---|
+| `API_KEY` | 爬虫推送时必须携带的密钥 | Render 自动生成 |
+| `DATA_DIR` | SQLite 数据库目录 | `/var/render/data` |
+| `FRONTEND_ORIGINS` | 额外允许的跨域前端域名，逗号分隔 | 空 |
+| `PORT` | 服务端口 | 3000 |
+
+### 本地运行后端
+
+```bash
+# 安装依赖
+npm install
+
+# 启动（默认端口 3000，API_KEY 请自行设置）
+API_KEY=your-secret-key npm start
+
+# 开发模式（文件变更自动重启）
+API_KEY=your-secret-key npm run dev
+```
+
+---
+
+## 爬虫与后端联动
+
+### 1. 配置爬虫
+
+编辑 `crawler/config.json`：
+
+```json
+{
+  "backend": {
+    "url": "https://douyin-xhs-workbench-backend-xxx.onrender.com",
+    "api_key": "your-api-key",
+    "auto_sync": true
+  }
+}
+```
+
+### 2. 运行采集
+
+```bash
+cd crawler
+source venv/bin/activate
+python main.py --run
+```
+
+采集完成后会自动把新增数据推送到后端，同时仍会导出 CSV/Excel 到 `crawler/output/`。
+
+### 3. 只同步本地已有数据到后端
+
+```bash
+python main.py --sync-only
+```
+
+### 4. 定时每周自动采集
+
+```bash
+python main.py --schedule
+```
+
+默认每周一 09:00 自动采集并同步。
 
 ---
 
@@ -175,9 +269,11 @@ https://douyin-xhs-workbench.vercel.app
 
 ## 注意事项
 
-- 所有数据保存在当前浏览器的 `localStorage` 中，清理浏览器数据会导致丢失，请定期备份。
-- 本项目为纯前端工具，不会上传任何数据到服务器。
+- 默认情况下，所有数据保存在当前浏览器的 `localStorage` 中，清理浏览器数据会导致丢失，请定期备份。
+- 部署后端后，爬虫采集的公开数据会推送到你自己的后端服务器；前端打开时会从该后端拉取，不会上传到第三方。
+- 免费 Render 后端会在 15 分钟无访问后休眠，首次访问可能需要等待 30 秒左右唤醒。
 - 封面生成使用 HTML Canvas，建议在桌面浏览器使用以获得最佳体验。
+- 爬虫仅采集平台公开可见内容，请遵守各平台规则与相关法律法规。
 
 ---
 
