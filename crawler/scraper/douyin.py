@@ -94,28 +94,30 @@ class DouyinScraper(BaseScraper):
         for el in elements:
             try:
                 href = el.get_attribute("href") or ""
-                if not href.startswith("http"):
+                if href.startswith("//"):
+                    href = "https:" + href
+                elif not href.startswith("http"):
                     href = self.BASE_URL + href
                 if "/video/" not in href:
                     continue
+                # 提取 video id，统一用标准详情页
+                m = re.search(r"/video/(\d+)", href)
+                if not m:
+                    continue
+                video_id = m.group(1)
+                clean_url = f"https://www.douyin.com/video/{video_id}"
                 title_el = el.query_selector("span, .title, [class*='title']")
                 title = title_el.inner_text() if title_el else ""
-                cards.append({"url": href, "title": truncate_text(title, 200)})
+                cards.append({"url": clean_url, "title": truncate_text(title, 200)})
             except Exception:
                 continue
         return cards
 
     def parse_detail(self, url: str) -> Dict[str, Any]:
-        """进入视频详情页采集完整信息"""
+        """进入视频详情页采集完整信息。抖音详情页数据主要在 title 和 meta description 里。"""
         if not self.safe_goto(url):
             return {}
         time.sleep(3)
-
-        # 调试：记录页面标题和 URL
-        try:
-            self.logger.info(f"[douyin] 详情页标题: {self.page.title()}, URL: {self.page.url}")
-        except Exception:
-            pass
 
         data = {
             "content": "",
@@ -128,94 +130,35 @@ class DouyinScraper(BaseScraper):
             "play_count": 0,
         }
 
-        # 标题/文案（抖音详情页文案在 .desc 或 video-info 区域，可能变化）
-        content_selectors = [
-            '[data-e2e="video-desc"]',
-            '.video-info-detail .desc',
-            '.desc-info-text',
-            '.title .desc',
-            '[class*="desc"][class*="video"]',
-        ]
-        for sel in content_selectors:
-            try:
-                el = self.page.query_selector(sel)
-                if el:
-                    data["content"] = el.inner_text().strip()
-                    break
-            except Exception:
-                continue
+        try:
+            title = self.page.title()
+            self.logger.info(f"[douyin] 详情页标题: {title}, URL: {self.page.url}")
+        except Exception:
+            title = ""
 
-        # 作者
-        author_selectors = [
-            '[data-e2e="video-author-name"]',
-            '.author-name',
-            '.user-info .nickname',
-        ]
-        for sel in author_selectors:
-            try:
-                el = self.page.query_selector(sel)
-                if el:
-                    data["author"] = el.inner_text().strip()
-                    break
-            except Exception:
-                continue
+        # 从 meta description 提取内容、作者、点赞、发布时间
+        try:
+            meta_desc = self.page.query_selector('meta[name="description"]')
+            desc = (meta_desc.get_attribute("content") or "").strip() if meta_desc else ""
+            if desc and len(desc) > 10:
+                data["content"] = desc.split("-")[0].strip()  # 取前面文案部分
+                # 作者：XXX 于 2026XXXX 发布
+                author_match = re.search(r"-\s*(.+?)\s*于\s*(\d{8})\s*发布", desc)
+                if author_match:
+                    data["author"] = author_match.group(1).strip()
+                    data["published_at"] = author_match.group(2)
+                # 点赞数：已经收获了 X 个喜欢
+                like_match = re.search(r"收获了\s*(\d+\.?\d*[wW万]?)\s*个喜欢", desc)
+                if like_match:
+                    data["likes"] = parse_count(like_match.group(1))
+        except Exception as e:
+            self.logger.warning(f"[douyin] meta 描述解析失败: {e}")
 
-        # 互动数据：点赞、评论、收藏、分享、播放量
-        stat_selectors = {
-            "likes": [
-                '[data-e2e="video-like-count"]',
-                '.like-count',
-                '[class*="like"] [class*="count"]',
-            ],
-            "comments": [
-                '[data-e2e="video-comment-count"]',
-                '.comment-count',
-                '[class*="comment"] [class*="count"]',
-            ],
-            "collections": [
-                '[data-e2e="video-collect-count"]',
-                '.collect-count',
-                '[class*="collect"] [class*="count"]',
-            ],
-            "shares": [
-                '[data-e2e="video-share-count"]',
-                '.share-count',
-            ],
-        }
-        for key, selectors in stat_selectors.items():
-            for sel in selectors:
-                try:
-                    el = self.page.query_selector(sel)
-                    if el:
-                        data[key] = parse_count(el.inner_text())
-                        break
-                except Exception:
-                    continue
+        # 如果 meta 没拿到内容，从 title 兜底
+        if not data["content"] and title and "-" in title:
+            data["content"] = title.split("-")[0].strip()
 
-        # 发布时间
-        time_selectors = [
-            '[data-e2e="video-publish-time"]',
-            '.publish-time',
-            '[class*="publish"][class*="time"]',
-        ]
-        for sel in time_selectors:
-            try:
-                el = self.page.query_selector(sel)
-                if el:
-                    data["published_at"] = el.inner_text().strip()
-                    break
-            except Exception:
-                continue
-
-        # 如果文案选择器都没找到，尝试从 body 文本中兜底提取前 200 字
-        if not data["content"]:
-            try:
-                page_text = self.page.inner_text("body")
-                data["content"] = re.sub(r'\s+', ' ', page_text).strip()[:300]
-            except Exception:
-                pass
-
-        # 播放量通常在搜索卡片上，详情页可能没有，尝试提取
+        # 兜底：从 body 文本提取播放量
         try:
             page_text = self.page.inner_text("body")
             play_match = re.search(r"(\d+\.?\d*[wW万]?)[\s]*次播放", page_text)
