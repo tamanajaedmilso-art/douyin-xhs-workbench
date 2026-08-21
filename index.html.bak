@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -36,6 +35,7 @@
     .btn-secondary { background: #f5f5f4; color: #57534e; }
     .btn-secondary:hover { background: #e7e5e4; }
     .tag { background: #fff1f2; color: #be123c; }
+    .canvas-preview { width: 100%; max-width: 240px; height: auto; border-radius: .75rem; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .banned { color: #dc2626; background: #fee2e2; padding: 0 2px; border-radius: 3px; font-weight: 600; }
     textarea, input, select { border: 1px solid #e7e5e4; outline: none; transition: border .2s, box-shadow .2s; }
     textarea:focus, input:focus, select:focus { border-color: #fda4af; box-shadow: 0 0 0 3px rgba(253,164,175,0.18); }
@@ -65,6 +65,9 @@
       <a href="#" data-page="scripts" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('scripts'); return false;">
         <i data-lucide="file-text"></i> 脚本批量生成
       </a>
+      <a href="#" data-page="covers" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('covers'); return false;">
+        <i data-lucide="image"></i> 封面批量生成
+      </a>
       <a href="#" data-page="library" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('library'); return false;">
         <i data-lucide="archive"></i> 素材资料库
       </a>
@@ -93,20 +96,6 @@
         </button>
       </div>
       <div class="card p-6">
-        <div class="flex flex-wrap gap-3 mb-5">
-          <select id="account-filter-platform" class="rounded-xl px-3 py-2 text-sm" onchange="app.renderAccounts()">
-            <option value="">全部平台</option>
-            <option value="抖音">抖音</option>
-            <option value="小红书">小红书</option>
-          </select>
-          <select id="account-filter-group" class="rounded-xl px-3 py-2 text-sm" onchange="app.renderAccounts()">
-            <option value="">全部分组</option>
-            <option value="医美机构">医美机构</option>
-            <option value="试管备孕">试管备孕</option>
-            <option value="个人IP">个人IP</option>
-            <option value="其他">其他</option>
-          </select>
-        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="accounts-list"></div>
         <div id="accounts-empty" class="hidden text-center py-16 text-stone-400">
           <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
@@ -124,15 +113,11 @@
             <i data-lucide="download" class="w-4 h-4"></i> 导出
           </button>
           <label class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2 cursor-pointer">
-            <i data-lucide="upload" class="w-4 h-4"></i> 导入模板
+            <i data-lucide="upload" class="w-4 h-4"></i> 导入
             <input type="file" class="hidden" accept=".json" onchange="app.importTemplates(this)">
           </label>
-          <label class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2 cursor-pointer">
-            <i data-lucide="database" class="w-4 h-4"></i> 导入采集数据
-            <input type="file" class="hidden" accept=".csv,.xlsx,.xls" onchange="app.importCollectedData(this)">
-          </label>
-          <button class="btn-primary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.openWeeklyCollection()">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> 每周爆款收录
+          <button class="btn-primary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.fetchDailyTemplates()">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> 每日采集
           </button>
         </div>
       </div>
@@ -173,40 +158,91 @@
         <div class="card p-6 h-fit lg:col-span-1 space-y-4">
           <div>
             <label class="block text-sm font-medium text-stone-600 mb-1">选择模板</label>
-            <select id="script-template" class="w-full rounded-xl px-3 py-2 text-sm" onchange="app.updateScriptFramework()"></select>
+            <select id="script-template" class="w-full rounded-xl px-3 py-2 text-sm" onchange="app.updateScriptPreview()"></select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-stone-600 mb-1">新主题/内容中心 <span class="text-red-400">*</span></label>
-            <input id="script-theme" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：超声炮抗衰" value="超声炮抗衰" oninput="app.autoInferAudience()">
+            <label class="block text-sm font-medium text-stone-600 mb-1">项目</label>
+            <input id="script-project" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：光子嫩肤 / 三代试管" value="光子嫩肤">
           </div>
           <div>
-            <label class="block text-sm font-medium text-stone-600 mb-1">目标人群（可选）</label>
-            <input id="script-audience" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：30+脸开始下垂的姐妹" oninput="if(this.value.trim()) this.dataset.userEdited='true'; else delete this.dataset.userEdited;">
+            <label class="block text-sm font-medium text-stone-600 mb-1">目标人群</label>
+            <input id="script-audience" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：25-35岁熬夜肌" value="25-35岁熬夜肌">
           </div>
-          <button class="btn-primary w-full py-2.5 rounded-xl text-sm font-medium" onclick="app.generateScripts()">解析模板框架 + 生成文案</button>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">文案风格</label>
+            <select id="script-style" class="w-full rounded-xl px-3 py-2 text-sm">
+              <option value="professional">专业科普</option>
+              <option value="warm">温暖陪伴</option>
+              <option value="pain">痛点共鸣</option>
+              <option value="success">成功案例</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">生成数量</label>
+            <select id="script-count" class="w-full rounded-xl px-3 py-2 text-sm">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          <button class="btn-primary w-full py-2.5 rounded-xl text-sm font-medium" onclick="app.generateScripts()">批量生成脚本</button>
           <div class="bg-rose-50 rounded-xl p-3 text-xs text-rose-700">
             <p class="font-medium mb-1">违禁词提示</p>
             <p>生成后红色高亮显示敏感词，请谨慎使用。</p>
           </div>
         </div>
-        <div class="lg:col-span-2 space-y-4">
-          <div id="script-framework-card" class="card p-6 hidden">
-            <h3 class="font-bold text-stone-800 mb-4">模板底层文案框架拆解</h3>
-            <div id="script-framework" class="space-y-2 text-sm text-stone-700"></div>
+        <div class="lg:col-span-2 card p-6">
+          <h3 class="font-bold text-stone-800 mb-4">生成结果</h3>
+          <div id="scripts-results" class="space-y-4"></div>
+          <div id="scripts-empty" class="text-center py-16 text-stone-400">
+            <i data-lucide="file-text" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+            <p>填写左侧参数后点击生成</p>
           </div>
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-bold text-stone-800">生成结果</h3>
-              <div class="flex bg-beige-100 rounded-lg p-1">
-                <button id="fmt-douyin" class="px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm" onclick="app.setScriptFormat('douyin')">抖音口播稿</button>
-                <button id="fmt-xhs" class="px-3 py-1 rounded-md text-xs font-medium text-stone-500" onclick="app.setScriptFormat('xhs')">小红书笔记</button>
-                <button id="fmt-both" class="px-3 py-1 rounded-md text-xs font-medium text-stone-500" onclick="app.setScriptFormat('both')">双平台</button>
-              </div>
-            </div>
-            <div id="scripts-results" class="space-y-4"></div>
-            <div id="scripts-empty" class="text-center py-16 text-stone-400">
-              <i data-lucide="file-text" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
-              <p>填写左侧参数后点击生成</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Covers -->
+    <section id="page-covers" class="section max-w-6xl mx-auto">
+      <h2 class="text-2xl font-bold text-stone-800 mb-6">封面批量生成</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-6 h-fit lg:col-span-1 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">尺寸</label>
+            <select id="cover-size" class="w-full rounded-xl px-3 py-2 text-sm" onchange="app.renderCoverPreview()">
+              <option value="9:16">抖音 9:16 (1080×1920)</option>
+              <option value="3:4">小红书 3:4 (1080×1440)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">标题</label>
+            <input id="cover-title" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="主标题" value="熬夜肌逆袭" oninput="app.renderCoverPreview()">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">副标题</label>
+            <input id="cover-subtitle" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="副标题 / 价格" value="光子嫩肤 ¥199起" oninput="app.renderCoverPreview()">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">项目名</label>
+            <input id="cover-project" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="项目名" value="光子嫩肤" oninput="app.renderCoverPreview()">
+          </div>
+          <div class="flex gap-2">
+            <button class="btn-primary flex-1 py-2.5 rounded-xl text-sm font-medium" onclick="app.downloadCover()">下载当前封面</button>
+            <button class="btn-secondary flex-1 py-2.5 rounded-xl text-sm font-medium" onclick="app.batchDownloadCovers()">批量生成4张</button>
+          </div>
+          <p class="text-xs text-stone-400">左侧预览为等比例缩放，下载为高清 PNG。</p>
+        </div>
+        <div class="lg:col-span-2 card p-6">
+          <h3 class="font-bold text-stone-800 mb-4">实时预览 · <span id="cover-style-name">樱花粉轻奢</span></h3>
+          <div class="flex flex-col items-center">
+            <canvas id="cover-canvas" width="1080" height="1920" class="canvas-preview"></canvas>
+            <div class="flex gap-2 mt-4 flex-wrap justify-center">
+              <button class="px-3 py-1.5 rounded-lg text-xs border border-rose-200 bg-rose-50 text-rose-600" onclick="app.setCoverStyle(0)">樱花粉轻奢</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs border border-stone-200 bg-stone-50 text-stone-600" onclick="app.setCoverStyle(1)">轻奢金礼遇</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs border border-stone-200 bg-stone-50 text-stone-600" onclick="app.setCoverStyle(2)">前后对比</button>
+              <button class="px-3 py-1.5 rounded-lg text-xs border border-stone-200 bg-stone-50 text-stone-600" onclick="app.setCoverStyle(3)">信任背书</button>
             </div>
           </div>
         </div>
@@ -372,41 +408,6 @@
   </div>
 </div>
 
-<!-- Confirm Modal -->
-<div id="confirm-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
-  <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-    <h3 id="confirm-title" class="text-lg font-bold text-stone-800 mb-2">确认</h3>
-    <p id="confirm-message" class="text-sm text-stone-600 mb-6">确定执行此操作吗？</p>
-    <div class="flex justify-end gap-2">
-      <button class="px-4 py-2 rounded-xl text-sm text-stone-500 hover:bg-stone-100" onclick="app.closeConfirmModal()">取消</button>
-      <button id="confirm-btn" class="px-5 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600">确定</button>
-    </div>
-  </div>
-</div>
-
-<!-- Template Edit Modal -->
-<div id="template-edit-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
-  <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-    <h3 class="text-lg font-bold text-stone-800 mb-4">编辑模板</h3>
-    <input type="hidden" id="template-edit-id">
-    <div class="space-y-3">
-      <div><label class="block text-xs text-stone-500 mb-1">标题</label><input id="template-edit-title" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
-      <div><label class="block text-xs text-stone-500 mb-1">钩子</label><input id="template-edit-hook" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
-      <div><label class="block text-xs text-stone-500 mb-1">痛点</label><input id="template-edit-pain" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
-      <div><label class="block text-xs text-stone-500 mb-1">痒点</label><input id="template-edit-itch" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
-      <div><label class="block text-xs text-stone-500 mb-1">卖点（每行一条）</label><textarea id="template-edit-points" rows="4" class="w-full rounded-xl px-3 py-2 text-sm resize-none"></textarea></div>
-      <div><label class="block text-xs text-stone-500 mb-1">正文结构</label><textarea id="template-edit-body" rows="4" class="w-full rounded-xl px-3 py-2 text-sm resize-none"></textarea></div>
-      <div><label class="block text-xs text-stone-500 mb-1">结尾引导</label><input id="template-edit-ending" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
-      <div><label class="block text-xs text-stone-500 mb-1">标签（用空格分隔）</label><input id="template-edit-tags" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
-      <div><label class="block text-xs text-stone-500 mb-1">来源链接</label><input id="template-edit-source-link" type="text" class="w-full rounded-xl px-3 py-2 text-sm"></div>
-    </div>
-    <div class="flex justify-end gap-2 mt-6">
-      <button class="px-4 py-2 rounded-xl text-sm text-stone-500 hover:bg-stone-100" onclick="app.closeTemplateEditModal()">取消</button>
-      <button class="btn-primary px-5 py-2 rounded-xl text-sm font-medium" onclick="app.saveTemplateEdit()">保存</button>
-    </div>
-  </div>
-</div>
-
 <script>
 (function() {
   'use strict';
@@ -422,41 +423,23 @@
 
   const BANNED_WORDS = ['最好','最佳','第一','顶级','国家级','特效','根治','无效退款','保证','绝对','100%','零风险','永久','立刻','马上','一针见效','神药','包治','秘方','纯天然无副作用','医美贷','整容贷'];
 
-  const ACCOUNT_GROUPS = ['医美机构','试管备孕','个人IP','其他'];
-  const PLATFORMS = ['抖音','小红书'];
-
-  function accountAvatar(name) {
-    return name.trim().slice(0, 2);
-  }
-  function accountColorClass(platform) {
-    return platform === '抖音' ? 'bg-stone-800 text-white' : 'bg-rose-500 text-white';
-  }
-  function makeAccount(name, platform, group, note) {
-    return { id: uid('acc'), name, platform, group, note, avatar: accountAvatar(name), createdAt: new Date().toISOString() };
-  }
-
   const DEFAULT_ACCOUNTS = [
-    makeAccount('小美医美日记', '小红书', '医美机构', '主账号，日更2条'),
-    makeAccount('试管备孕咨询师', '抖音', '试管备孕', '口播账号'),
-    makeAccount('Dr.林说脸', '抖音', '个人IP', '医生IP打造'),
-    makeAccount('备孕妈妈小糖', '小红书', '试管备孕', '真实经验分享'),
-    makeAccount('星辰医美官号', '抖音', '医美机构', '机构活动发布')
+    { id: 'acc_1', name: '小美医美日记', platform: '小红书', group: '医美机构', note: '主账号，日更2条' },
+    { id: 'acc_2', name: '试管备孕咨询师', platform: '抖音', group: '试管备孕', note: '口播账号' },
+    { id: 'acc_3', name: 'Dr.林说脸', platform: '抖音', group: '个人IP', note: '医生IP打造' }
   ];
 
   const DEFAULT_TEMPLATES = [
-    { id: 'tpl_1', title: '熬夜肌急救', hook: '[人群]别慌，[项目]真的能救！', painPoint: '[人群]皮肤暗沉、毛孔粗大，第二天状态差', itchPoint: '做完[项目]，第二天皮肤依旧透亮，素颜也能出门', sellingPoints: ['30分钟提亮','无创无痛','第二天可化妆'], body: '很多姐妹问我，[人群]的急救办法。其实[项目]搭配修护补水，做一次就能感受到变化。', ending: '想知道你适不适合？评论区扣1，帮你分析肤质。', tags: ['光子嫩肤','熬夜肌','医美'], favorite: false, source: '内置' },
-    { id: 'tpl_2', title: '三代试管答疑', hook: '[人群]做试管，为什么都选[项目]？', painPoint: '[人群]最怕反复流产、染色体异常、胎停风险', itchPoint: '[项目]能筛查胚胎染色体，提高着床率，少走弯路', sellingPoints: ['筛查胚胎染色体','降低胎停风险','提高着床率'], body: '[项目]并不是一代更比一代强，而是适合有反复流产、高龄、染色体异常史的夫妻。医生会根据检查报告给出建议。', ending: '留下你的年龄和AMH，帮你初步评估。', tags: ['三代试管','高龄备孕','试管'], favorite: false, source: '内置' },
-    { id: 'tpl_3', title: '医美小白避坑', hook: '第一次做[项目]，这3件事没人告诉你！', painPoint: '怕做[项目]踩坑、选错机构、怕效果不满意', itchPoint: '安全做好[项目]，少花冤枉钱', sellingPoints: ['查机构资质','看医生案例','别贪便宜'], body: '[项目]不是买菜，越便宜越要警惕。正规机构、合规产品、有资质的医生，三者缺一不可。', ending: '私信我领取《医美避坑清单》。', tags: ['医美避坑','新手','安全'], favorite: false, source: '内置' },
-    { id: 'tpl_4', title: '试管取卵真实分享', hook: '[项目]到底痛不痛？我替你们试过了。', painPoint: '很多姐妹最怕[项目]，担心疼痛和恢复慢', itchPoint: '[项目]全麻无痛，术后休息2小时就能回家', sellingPoints: ['全麻无痛','术后休息2小时','多数人可当天回家'], body: '很多姐妹最怕[项目]。实际在全麻下基本没感觉，术后可能会有轻微腹胀，遵医嘱多喝水、补充蛋白。', ending: '想了解试管全流程？关注我，持续更新。', tags: ['试管取卵','真实分享','备孕'], favorite: false, source: '内置' },
-    { id: 'tpl_5', title: '瘦脸针避雷', hook: '[项目]不是人人都适合，这3类脸别打！', painPoint: '脸大、脸宽让人自卑，但[项目]打错地方浪费钱', itchPoint: '找到适合自己脸型的[项目]方案，精准变美', sellingPoints: ['咬肌肥大才有效','骨骼型不适合','要选正规肉毒'], body: '[项目]只对咬肌肥大有效。如果你是脂肪多或骨骼宽，效果会不明显，要针对性改善。', ending: '拍一张正面照，评论区帮你判断类型。', tags: ['瘦脸针','肉毒','脸型'], favorite: false, source: '内置' },
-    { id: 'tpl_6', title: '试管移植后注意', hook: '[项目]后这5天，我做了3件对的事。', painPoint: '[项目]后不敢动、过度紧张、怕着床失败', itchPoint: '保持轻松心态，[项目]后顺利接好孕', sellingPoints: ['不绝对卧床','按时用药','保持心情放松'], body: '[项目]后不需要一直躺着，正常生活即可。过度紧张反而影响着床，遵医嘱用药、按时复查是关键。', ending: '点赞收藏，接好孕！', tags: ['试管移植','好孕','备孕'], favorite: false, source: '内置' },
-    { id: 'tpl_7', title: '水光针怎么选', hook: '[项目]不是越贵越好，看懂成分再掏钱。', painPoint: '[人群]皮肤干燥、卡粉、细纹多，不知道选什么[项目]', itchPoint: '精准选对[项目]，皮肤嫩到发光', sellingPoints: ['基础补水选玻尿酸','抗衰选动能素','修复选三文鱼'], body: '不同皮肤问题适合不同[项目]。先明确自己的需求，再让医生推荐配方，避免被营销牵着走。', ending: '拿不准的姐妹，私信发皮肤情况给我。', tags: ['水光针','护肤','医美'], favorite: false, source: '内置' },
-    { id: 'tpl_8', title: '多囊备孕经验', hook: '[人群]不是不孕，我用3个月调好备孕。', painPoint: '[人群]月经不调、排卵难、备孕压力大', itchPoint: '调理好[人群]，自然怀孕迎来宝宝', sellingPoints: ['控制胰岛素抵抗','规律作息','监测排卵'], body: '[人群]需要通过生活方式、药物调理和排卵监测综合管理。很多人调整后都能自然怀孕。', ending: '需要备孕方案模板的姐妹，评论区留言。', tags: ['多囊','备孕','调理'], favorite: false, source: '内置' },
-    { id: 'tpl_9', title: '抗衰仪器对比', hook: '热玛吉和[项目]，到底怎么选？', painPoint: '[人群]脸开始下垂、松弛，不知道选什么仪器', itchPoint: '热玛吉+[项目]，紧致+提拉轮廓更年轻', sellingPoints: ['一个紧致','一个提拉','联合效果更佳'], body: '热玛吉侧重紧致肤质，[项目]侧重深层提拉。30+下垂明显可以联合治疗，间隔1-3个月。', ending: '留下年龄和皮肤问题，我帮你选。', tags: ['热玛吉','超声炮','抗衰'], favorite: false, source: '内置' },
-    { id: 'tpl_10', title: '试管费用解析', hook: '做一次[项目]到底要花多少钱？', painPoint: '[人群]做[项目]费用不透明，怕预算不够被坑', itchPoint: '提前了解[项目]费用明细，心里有底', sellingPoints: ['检查费','促排费','手术费'], body: '[项目]费用因人而异，主要包括前期检查、促排药物、取卵移植等。公立医院和私立机构差异较大。', ending: '想拿费用明细表？私信“费用”领取。', tags: ['试管费用','备孕','预算'], favorite: false, source: '内置' },
-    { id: 'tpl_11', title: '法令纹填充真相', hook: '[项目]深，不是填越多越好看！', painPoint: '[项目]显老、显疲惫，填充又怕假面', itchPoint: '自然饱满的[项目]效果，年轻5岁', sellingPoints: ['分型治疗','填充+提升联合','避免假面感'], body: '[项目]成因复杂，可能是鼻基底凹陷、皮肤松弛或表情习惯。要分型治疗，填充+提升联合更自然。', ending: '评论区发照片，帮你判断类型。', tags: ['法令纹','填充','抗衰'], favorite: false, source: '内置' },
-    { id: 'tpl_12', title: '双眼皮修复', hook: '[项目]做坏了，什么时候能修复？', painPoint: '[项目]后肉条感、宽深假、不对称，后悔当初选择', itchPoint: '[项目]修复后眼睛自然有神，重拾自信', sellingPoints: ['术后6个月以上评估','分型修复思路','选经验丰富的医生'], body: '一般建议[项目]术后6个月以上再评估修复。肉条感、宽深假、不对称都有不同的修复思路。', ending: '需要修复建议的姐妹，私信我。', tags: ['双眼皮','修复','医美'], favorite: false, source: '内置' },
-    { id: 'tpl_13', title: '曼谷全身美白故事流', hook: '来曼谷做[项目]，我真的找到了全身美白的神', painPoint: '直接拯救了我的黄黑粗糙皮，之前全身暗沉发黄、关节死角发黑，肤色斑驳不均、肌理坑坑洼洼，每天对着镜子身材肤色内耗，自卑又崩溃', itchPoint: '直到曼谷本地闺蜜安利，说这家的分层焕白技术在本地名媛圈层都传开了，搜了一下才知道本地评分竟高达9.9分，深耕全身肌肤精细化焕白十多年，专门做分层透亮冷白肌，给很多名媛贵妇、精致女生打理过全身肤质，专业实力实打实过硬', sellingPoints: [], body: '面诊操作前我还特别紧张，怕力度过重刺激泛红、怕假白僵硬、怕做完快速反黑，没想到性价比直接碾压国内同款高端美白项目，全套[项目]全身进阶焕白改造也才1W+。他家美白审美真的超级高级，坚决拒绝网红死白、假面假白，只做原生通透的自然冷白皮，全程操作温柔细致，还会耐心安抚情绪，根据每个人的肤色暗沉情况、肌肤耐受度精细化把控层次和力度，不过度护理、不强行提亮，最终通透干净的质感直接惊艳到我，这趟曼谷变美之旅真的选对了', ending: '近期打算来曼谷做[项目]、改善黄黑皮、想拥有通透冷白肌的[人群]，可以滴滴我哦', tags: ['曼谷医美','全身美白','医美'], favorite: false, source: '内置' }
+    { id: 'tpl_1', title: '熬夜肌急救', hook: '[人群]别慌，[项目]真的能救！', sellingPoints: ['30分钟提亮','无创无痛','第二天可化妆'], body: '很多姐妹问我，[人群]的急救办法。其实[项目]搭配修护补水，做一次就能感受到变化。', ending: '想知道你适不适合？评论区扣1，帮你分析肤质。', tags: ['光子嫩肤','熬夜肌','医美'], favorite: false, source: '内置' },
+    { id: 'tpl_2', title: '三代试管答疑', hook: '[人群]做试管，为什么都选[项目]？', sellingPoints: ['筛查胚胎染色体','降低胎停风险','提高着床率'], body: '[项目]并不是一代更比一代强，而是适合有反复流产、高龄、染色体异常史的夫妻。医生会根据检查报告给出建议。', ending: '留下你的年龄和AMH，帮你初步评估。', tags: ['三代试管','高龄备孕','试管'], favorite: false, source: '内置' },
+    { id: 'tpl_3', title: '医美小白避坑', hook: '第一次做[项目]，这3件事没人告诉你！', sellingPoints: ['查机构资质','看医生案例','别贪便宜'], body: '[项目]不是买菜，越便宜越要警惕。正规机构、合规产品、有资质的医生，三者缺一不可。', ending: '私信我领取《医美避坑清单》。', tags: ['医美避坑','新手','安全'], favorite: false, source: '内置' },
+    { id: 'tpl_4', title: '试管取卵真实分享', hook: '[项目]到底痛不痛？我替你们试过了。', sellingPoints: ['全麻无痛','术后休息2小时','多数人可当天回家'], body: '很多姐妹最怕[项目]。实际在全麻下基本没感觉，术后可能会有轻微腹胀，遵医嘱多喝水、补充蛋白。', ending: '想了解试管全流程？关注我，持续更新。', tags: ['试管取卵','真实分享','备孕'], favorite: false, source: '内置' },
+    { id: 'tpl_5', title: '瘦脸针避雷', hook: '[项目]不是人人都适合，这3类脸别打！', sellingPoints: ['咬肌肥大才有效','骨骼型不适合','要选正规肉毒'], body: '[项目]只对咬肌肥大有效。如果你是脂肪多或骨骼宽，效果会不明显，要针对性改善。', ending: '拍一张正面照，评论区帮你判断类型。', tags: ['瘦脸针','肉毒','脸型'], favorite: false, source: '内置' },
+    { id: 'tpl_6', title: '试管移植后注意', hook: '[项目]后这5天，我做了3件对的事。', sellingPoints: ['不绝对卧床','按时用药','保持心情放松'], body: '[项目]后不需要一直躺着，正常生活即可。过度紧张反而影响着床，遵医嘱用药、按时复查是关键。', ending: '点赞收藏，接好孕！', tags: ['试管移植','好孕','备孕'], favorite: false, source: '内置' },
+    { id: 'tpl_7', title: '水光针怎么选', hook: '[项目]不是越贵越好，看懂成分再掏钱。', sellingPoints: ['基础补水选玻尿酸','抗衰选动能素','修复选三文鱼'], body: '不同皮肤问题适合不同[项目]。先明确自己的需求，再让医生推荐配方，避免被营销牵着走。', ending: '拿不准的姐妹，私信发皮肤情况给我。', tags: ['水光针','护肤','医美'], favorite: false, source: '内置' },
+    { id: 'tpl_8', title: '多囊备孕经验', hook: '[人群]不是不孕，我用3个月调好备孕。', sellingPoints: ['控制胰岛素抵抗','规律作息','监测排卵'], body: '[人群]需要通过生活方式、药物调理和排卵监测综合管理。很多人调整后都能自然怀孕。', ending: '需要备孕方案模板的姐妹，评论区留言。', tags: ['多囊','备孕','调理'], favorite: false, source: '内置' },
+    { id: 'tpl_9', title: '抗衰仪器对比', hook: '热玛吉和[项目]，到底怎么选？', sellingPoints: ['一个紧致','一个提拉','联合效果更佳'], body: '热玛吉侧重紧致肤质，[项目]侧重深层提拉。30+下垂明显可以联合治疗，间隔1-3个月。', ending: '留下年龄和皮肤问题，我帮你选。', tags: ['热玛吉','超声炮','抗衰'], favorite: false, source: '内置' },
+    { id: 'tpl_10', title: '试管费用解析', hook: '做一次[项目]到底要花多少钱？', sellingPoints: ['检查费','促排费','手术费'], body: '[项目]费用因人而异，主要包括前期检查、促排药物、取卵移植等。公立医院和私立机构差异较大。', ending: '想拿费用明细表？私信“费用”领取。', tags: ['试管费用','备孕','预算'], favorite: false, source: '内置' }
   ];
 
   const DAILY_SEEDS = [
@@ -475,14 +458,9 @@
     templates: [],
     scripts: [],
     drafts: [],
-    settings: { lastFetch: null }
+    settings: { lastFetch: null },
+    coverStyle: 0
   };
-
-  if (location.search.includes('reset=1')) {
-    localStorage.clear();
-    location.replace(location.pathname);
-    return;
-  }
 
   let parseResult = null;
 
@@ -491,7 +469,7 @@
   }
 
   function refreshIcons() {
-    if (window.lucide && lucide.createIcons) lucide.createIcons();
+    if (window.lucide && lucide.createIcons) refreshIcons();
   }
 
   function load(key, fallback) {
@@ -508,24 +486,16 @@
   }
 
   function init() {
-    let acc = load(KEYS.accounts, null);
-    if (!acc) {
-      acc = JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS));
-    } else {
-      acc = acc.map(a => ({ ...a, avatar: a.avatar || accountAvatar(a.name) }));
+    state.accounts = load(KEYS.accounts, null);
+    if (!state.accounts) {
+      state.accounts = JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS));
+      save(KEYS.accounts, state.accounts);
     }
-    state.accounts = acc;
-    save(KEYS.accounts, state.accounts);
-
-    let tpl = load(KEYS.templates, null);
-    if (!tpl) {
-      tpl = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-    } else {
-      tpl = tpl.map(t => ({ ...t, painPoint: t.painPoint || '', itchPoint: t.itchPoint || '', bodyStructure: t.bodyStructure || t.body || '' }));
+    state.templates = load(KEYS.templates, null);
+    if (!state.templates) {
+      state.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+      save(KEYS.templates, state.templates);
     }
-    state.templates = tpl;
-    save(KEYS.templates, state.templates);
-
     state.scripts = load(KEYS.scripts, []);
     state.drafts = load(KEYS.drafts, []);
     state.settings = load(KEYS.settings, { lastFetch: null });
@@ -552,8 +522,6 @@
         id: uid('tpl'),
         title: s.title,
         hook: s.hook,
-        painPoint: extractPainPoint(s.hook + ' ' + s.body),
-        itchPoint: extractItchPoint(s.hook + ' ' + s.body),
         sellingPoints: extractSellingPoints(s.hook + ' ' + s.body),
         body: s.body,
         ending: s.ending,
@@ -578,30 +546,6 @@
   function extractHook(text) {
     const lines = text.split(/\n/).filter(l => l.trim());
     return lines[0] ? lines[0].trim().slice(0, 80) : '';
-  }
-
-  function extractPainPoint(text) {
-    const lines = text.split(/\n|，|。/).map(l => l.trim()).filter(Boolean);
-    const painWords = ['焦虑','困扰','烦恼','怕','担心','后悔','踩坑','失败','下垂','松弛','暗沉','长痘','不孕','胎停','法令纹深','凹陷','宽','假','痛','贵','乱','坑','肉条','不对称','翻车'];
-    const scored = lines.map(line => {
-      let score = 0;
-      painWords.forEach(w => { if (line.includes(w)) score += 2; });
-      if (/[？?]/.test(line)) score += 1;
-      return { line, score };
-    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
-    return scored[0] ? scored[0].line.slice(0, 120) : '';
-  }
-
-  function extractItchPoint(text) {
-    const lines = text.split(/\n|，|。/).map(l => l.trim()).filter(Boolean);
-    const itchWords = ['想要','逆袭','变美','年轻','紧致','透亮','好孕','心动','种草','素颜自由','发光','自然','自信','饱满','理想','期待','渴望','无痕','高级','幼态'];
-    const scored = lines.map(line => {
-      let score = 0;
-      itchWords.forEach(w => { if (line.includes(w)) score += 2; });
-      if (/[！!]/.test(line)) score += 1;
-      return { line, score };
-    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
-    return scored[0] ? scored[0].line.slice(0, 120) : '';
   }
 
   function extractSellingPoints(text) {
@@ -646,20 +590,16 @@
     const input = document.getElementById('template-input').value.trim();
     if (!input) { toast('请先粘贴爆款文案'); return; }
     const hook = extractHook(input);
-    const painPoint = extractPainPoint(input);
-    const itchPoint = extractItchPoint(input);
     const sellingPoints = extractSellingPoints(input);
     const ending = extractEnding(input);
     const body = extractBody(input, hook, ending);
     const tags = extractTags(input);
-    parseResult = { hook, painPoint, itchPoint, sellingPoints, body, ending, tags, source: '解析' };
+    parseResult = { hook, sellingPoints, body, ending, tags, source: '解析' };
     const preview = document.getElementById('parse-preview');
     preview.innerHTML = '<div><span class="font-medium">钩子：</span>' + escapeHtml(hook) + '</div>' +
-      (painPoint ? '<div><span class="font-medium">痛点：</span><span class="text-stone-600">' + escapeHtml(painPoint) + '</span></div>' : '') +
-      (itchPoint ? '<div><span class="font-medium">痒点：</span><span class="text-stone-600">' + escapeHtml(itchPoint) + '</span></div>' : '') +
       '<div><span class="font-medium">卖点：</span>' + sellingPoints.map(s => '<span class="tag text-xs px-2 py-0.5 rounded-full inline-block mr-1">' + escapeHtml(s) + '</span>').join('') + '</div>' +
-      '<div><span class="font-medium">正文结构：</span>' + escapeHtml(body.slice(0, 120)) + (body.length > 120 ? '...' : '') + '</div>' +
-      '<div><span class="font-medium">结尾引导：</span>' + escapeHtml(ending) + '</div>' +
+      '<div><span class="font-medium">正文：</span>' + escapeHtml(body.slice(0, 120)) + (body.length > 120 ? '...' : '') + '</div>' +
+      '<div><span class="font-medium">结尾：</span>' + escapeHtml(ending) + '</div>' +
       '<div><span class="font-medium">标签：</span>' + tags.map(t => '#' + escapeHtml(t)).join(' ') + '</div>';
     preview.classList.remove('hidden');
     document.getElementById('save-template-btn').classList.remove('hidden');
@@ -697,44 +637,40 @@
     const active = document.querySelector('.nav-item[data-page="' + page + '"]');
     if (active) active.classList.add('active');
     if (page === 'templates') updateDailyInfo();
-    if (page === 'scripts') { updateScriptTemplateOptions(); autoInferAudience(); updateScriptFramework(); renderScriptOutput(); }
+    if (page === 'scripts') { updateScriptTemplateOptions(); renderScriptResultsList(); }
   }
 
   function renderAll() {
     renderAccounts();
     renderTemplates();
     updateScriptTemplateOptions();
-    autoInferAudience();
-    updateScriptFramework();
-    renderScriptOutput();
+    renderScriptResultsList();
     renderLibrary();
     renderDrafts();
     updateDailyInfo();
+    renderCoverPreview();
   }
 
   // Accounts
   function renderAccounts() {
     const list = document.getElementById('accounts-list');
     const empty = document.getElementById('accounts-empty');
-    const platformFilter = document.getElementById('account-filter-platform')?.value || '';
-    const groupFilter = document.getElementById('account-filter-group')?.value || '';
-    const filtered = state.accounts.filter(a => (!platformFilter || a.platform === platformFilter) && (!groupFilter || a.group === groupFilter));
-    if (!filtered.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    if (!state.accounts.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
     empty.classList.add('hidden');
-    list.innerHTML = filtered.map(a => {
-      const platformBadge = a.platform === '抖音' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-white">抖音</span>' : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500 text-white">小红书</span>';
+    list.innerHTML = state.accounts.map(a => {
+      const platformColor = a.platform === '抖音' ? 'bg-stone-800 text-white' : 'bg-rose-500 text-white';
       return '<div class="card p-4 border border-beige-200 hover:shadow-md transition">' +
         '<div class="flex items-start justify-between">' +
           '<div class="flex items-center gap-3">' +
-            '<div class="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold ' + accountColorClass(a.platform) + '">' + escapeHtml(a.avatar || accountAvatar(a.name)) + '</div>' +
+            '<div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ' + platformColor + '">' + a.platform.slice(0,1) + '</div>' +
             '<div>' +
               '<h4 class="font-bold text-stone-800">' + escapeHtml(a.name) + '</h4>' +
-              '<div class="flex items-center gap-1 mt-0.5">' + platformBadge + '<span class="text-xs text-stone-500">' + escapeHtml(a.group) + '</span></div>' +
+              '<span class="text-xs text-stone-500">' + escapeHtml(a.group) + '</span>' +
             '</div>' +
           '</div>' +
           '<div class="flex gap-1">' +
             '<button class="p-1.5 rounded-lg hover:bg-beige-100 text-stone-400" onclick="app.editAccount(\'' + a.id + '\')"><i data-lucide="pencil" class="w-4 h-4"></i></button>' +
-            '<button class="p-1.5 rounded-lg hover:bg-red-50 text-red-400" onclick="app.confirmDeleteAccount(\'' + a.id + '\')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' +
+            '<button class="p-1.5 rounded-lg hover:bg-red-50 text-red-400" onclick="app.deleteAccount(\'' + a.id + '\')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' +
           '</div>' +
         '</div>' +
         '<p class="text-xs text-stone-400 mt-3 line-clamp-2">' + escapeHtml(a.note || '暂无备注') + '</p>' +
@@ -776,9 +712,9 @@
     if (!name) { toast('请输入账号名称'); return; }
     if (id) {
       const idx = state.accounts.findIndex(a => a.id === id);
-      state.accounts[idx] = { ...state.accounts[idx], id, name, platform, group, note, avatar: accountAvatar(name) };
+      state.accounts[idx] = { id, name, platform, group, note };
     } else {
-      state.accounts.push(makeAccount(name, platform, group, note));
+      state.accounts.push({ id: uid('acc'), name, platform, group, note });
     }
     save(KEYS.accounts, state.accounts);
     closeAccountModal();
@@ -786,35 +722,11 @@
     toast('账号已保存');
   }
 
-  let accountToDelete = null;
-  function confirmDeleteAccount(id) {
-    const a = state.accounts.find(x => x.id === id);
-    accountToDelete = id;
-    openConfirmModal('删除账号', '确定删除账号「' + a.name + '」吗？删除后不可恢复。', () => {
-      state.accounts = state.accounts.filter(a => a.id !== accountToDelete);
-      accountToDelete = null;
-      save(KEYS.accounts, state.accounts);
-      renderAccounts();
-      toast('账号已删除');
-    });
-  }
-
-  let confirmCallback = null;
-  function openConfirmModal(title, message, onConfirm) {
-    document.getElementById('confirm-title').textContent = title;
-    document.getElementById('confirm-message').textContent = message;
-    document.getElementById('confirm-modal').classList.remove('hidden');
-    document.getElementById('confirm-modal').classList.add('flex');
-    confirmCallback = onConfirm;
-    document.getElementById('confirm-btn').onclick = () => {
-      closeConfirmModal();
-      if (confirmCallback) confirmCallback();
-    };
-  }
-  function closeConfirmModal() {
-    document.getElementById('confirm-modal').classList.add('hidden');
-    document.getElementById('confirm-modal').classList.remove('flex');
-    confirmCallback = null;
+  function deleteAccount(id) {
+    if (!confirm('确定删除该账号？')) return;
+    state.accounts = state.accounts.filter(a => a.id !== id);
+    save(KEYS.accounts, state.accounts);
+    renderAccounts();
   }
 
   // Templates
@@ -824,35 +736,27 @@
     const q = (document.getElementById('template-search')?.value || '').toLowerCase();
     const favOnly = document.getElementById('template-filter-fav')?.value === 'fav';
     const filtered = state.templates.filter(t => {
-      const match = !q || t.title.toLowerCase().includes(q) || t.hook.toLowerCase().includes(q) || (t.painPoint && t.painPoint.toLowerCase().includes(q)) || (t.itchPoint && t.itchPoint.toLowerCase().includes(q)) || t.tags.some(tag => tag.toLowerCase().includes(q));
+      const match = !q || t.title.toLowerCase().includes(q) || t.hook.toLowerCase().includes(q) || t.tags.some(tag => tag.toLowerCase().includes(q));
       const fav = !favOnly || t.favorite;
       return match && fav;
     });
     if (!filtered.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
     empty.classList.add('hidden');
     list.innerHTML = filtered.map(t => {
-      const sourceBadge = t.source === '采集' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">采集</span>' : (t.source === '每日采集' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600">每日采集</span>' : (t.source === '内置' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">内置</span>' : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-500">自定义</span>'));
-      const linkIcon = t.sourceLink ? '<a href="' + escapeHtml(t.sourceLink) + '" target="_blank" class="ml-2 text-stone-400 hover:text-rose-500" title="打开来源"><i data-lucide="external-link" class="w-3 h-3"></i></a>' : '';
-      const decompose = '<div class="mt-3 space-y-1.5 text-xs text-stone-600 bg-beige-50 rounded-xl p-3">' +
-        '<div><span class="font-medium text-stone-800">痛点：</span>' + escapeHtml(t.painPoint || '—') + '</div>' +
-        '<div><span class="font-medium text-stone-800">痒点：</span>' + escapeHtml(t.itchPoint || '—') + '</div>' +
-        '<div><span class="font-medium text-stone-800">卖点：</span>' + (t.sellingPoints || []).map(s => '<span class="inline-block bg-white border border-beige-200 rounded px-1.5 py-0.5 mr-1 mb-1">' + escapeHtml(s) + '</span>').join('') + '</div>' +
-        '<div><span class="font-medium text-stone-800">结尾：</span>' + escapeHtml(t.ending) + '</div>' +
-      '</div>';
+      const sourceBadge = t.source === '每日采集' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600">每日采集</span>' : (t.source === '内置' ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">内置</span>' : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-500">自定义</span>');
       return '<div class="card p-4 border border-beige-200 hover:shadow-md transition">' +
         '<div class="flex items-start justify-between mb-2">' +
           '<h4 class="font-bold text-stone-800 line-clamp-1">' + escapeHtml(t.title) + '</h4>' +
           '<button class="text-stone-300 hover:text-rose-400 ' + (t.favorite ? 'text-rose-400' : '') + '" onclick="app.toggleFavTemplate(\'' + t.id + '\')"><i data-lucide="heart" class="w-4 h-4 ' + (t.favorite ? 'fill-current' : '') + '"></i></button>' +
         '</div>' +
-        '<p class="text-sm text-stone-600 line-clamp-2 mb-1">' + escapeHtml(t.hook) + '</p>' +
-        '<div class="flex flex-wrap gap-1 mb-1">' + t.tags.map(tag => '<span class="tag text-xs px-2 py-0.5 rounded-full">#' + escapeHtml(tag) + '</span>').join('') + '</div>' +
-        decompose +
-        '<div class="flex items-center justify-between mt-3">' +
-          '<div class="flex items-center">' + sourceBadge + linkIcon + '</div>' +
+        '<p class="text-sm text-stone-600 line-clamp-2 mb-2">' + escapeHtml(t.hook) + '</p>' +
+        '<div class="flex flex-wrap gap-1 mb-3">' + t.tags.map(tag => '<span class="tag text-xs px-2 py-0.5 rounded-full">#' + escapeHtml(tag) + '</span>').join('') + '</div>' +
+        '<div class="flex items-center justify-between">' +
+          '<div>' + sourceBadge + '</div>' +
           '<div class="flex gap-1">' +
             '<button class="p-1.5 rounded-lg hover:bg-beige-100 text-stone-400" onclick="app.viewTemplate(\'' + t.id + '\')"><i data-lucide="eye" class="w-4 h-4"></i></button>' +
             '<button class="p-1.5 rounded-lg hover:bg-beige-100 text-stone-400" onclick="app.editTemplate(\'' + t.id + '\')"><i data-lucide="pencil" class="w-4 h-4"></i></button>' +
-            '<button class="p-1.5 rounded-lg hover:bg-red-50 text-red-400" onclick="app.confirmDeleteTemplate(\'' + t.id + '\')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' +
+            '<button class="p-1.5 rounded-lg hover:bg-red-50 text-red-400" onclick="app.deleteTemplate(\'' + t.id + '\')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -867,69 +771,38 @@
     renderTemplates();
   }
 
-  function confirmDeleteTemplate(id) {
-    const t = state.templates.find(x => x.id === id);
-    openConfirmModal('删除模板', '确定删除模板「' + t.title + '」吗？删除后不可恢复。', () => {
-      state.templates = state.templates.filter(t => t.id !== id);
-      save(KEYS.templates, state.templates);
-      renderTemplates();
-      toast('模板已删除');
-    });
+  function deleteTemplate(id) {
+    if (!confirm('确定删除该模板？')) return;
+    state.templates = state.templates.filter(t => t.id !== id);
+    save(KEYS.templates, state.templates);
+    renderTemplates();
   }
 
   function viewTemplate(id) {
     const t = state.templates.find(x => x.id === id);
     document.getElementById('detail-title').textContent = t.title;
-    const linkHtml = t.sourceLink ? '<p><strong>来源链接：</strong><a href="' + escapeHtml(t.sourceLink) + '" target="_blank" class="text-rose-500 underline break-all">' + escapeHtml(t.sourceLink) + '</a></p>' : '';
     document.getElementById('detail-body').innerHTML = '<p><strong>钩子：</strong>' + escapeHtml(t.hook) + '</p>' +
-      '<p><strong>痛点：</strong>' + escapeHtml(t.painPoint || '—') + '</p>' +
-      '<p><strong>痒点：</strong>' + escapeHtml(t.itchPoint || '—') + '</p>' +
-      '<p><strong>卖点：</strong></p><ul class="list-disc pl-5">' + (t.sellingPoints || []).map(s => '<li>' + escapeHtml(s) + '</li>').join('') + '</ul>' +
-      '<p><strong>正文结构：</strong></p><p>' + escapeHtml(t.body) + '</p>' +
-      '<p><strong>结尾引导：</strong>' + escapeHtml(t.ending) + '</p>' +
-      '<p><strong>标签：</strong>' + t.tags.map(tag => '#' + escapeHtml(tag)).join(' ') + '</p>' +
-      linkHtml;
+      '<p><strong>卖点：</strong></p><ul class="list-disc pl-5">' + t.sellingPoints.map(s => '<li>' + escapeHtml(s) + '</li>').join('') + '</ul>' +
+      '<p><strong>正文：</strong></p><p>' + escapeHtml(t.body) + '</p>' +
+      '<p><strong>结尾：</strong>' + escapeHtml(t.ending) + '</p>' +
+      '<p><strong>标签：</strong>' + t.tags.map(tag => '#' + escapeHtml(tag)).join(' ') + '</p>';
     document.getElementById('detail-modal').classList.remove('hidden');
     document.getElementById('detail-modal').classList.add('flex');
   }
 
-  function openTemplateEditModal(id) {
+  function editTemplate(id) {
     const t = state.templates.find(x => x.id === id);
-    document.getElementById('template-edit-id').value = id;
-    document.getElementById('template-edit-title').value = t.title;
-    document.getElementById('template-edit-hook').value = t.hook;
-    document.getElementById('template-edit-pain').value = t.painPoint || '';
-    document.getElementById('template-edit-itch').value = t.itchPoint || '';
-    document.getElementById('template-edit-points').value = (t.sellingPoints || []).join('\n');
-    document.getElementById('template-edit-body').value = t.body;
-    document.getElementById('template-edit-ending').value = t.ending;
-    document.getElementById('template-edit-tags').value = (t.tags || []).join(' ');
-    document.getElementById('template-edit-source-link').value = t.sourceLink || '';
-    document.getElementById('template-edit-modal').classList.remove('hidden');
-    document.getElementById('template-edit-modal').classList.add('flex');
-  }
-
-  function closeTemplateEditModal() {
-    document.getElementById('template-edit-modal').classList.add('hidden');
-    document.getElementById('template-edit-modal').classList.remove('flex');
-  }
-
-  function saveTemplateEdit() {
-    const id = document.getElementById('template-edit-id').value;
-    const t = state.templates.find(x => x.id === id);
-    t.title = document.getElementById('template-edit-title').value.trim();
-    t.hook = document.getElementById('template-edit-hook').value.trim();
-    t.painPoint = document.getElementById('template-edit-pain').value.trim();
-    t.itchPoint = document.getElementById('template-edit-itch').value.trim();
-    t.sellingPoints = document.getElementById('template-edit-points').value.split(/\n|，|,/).map(s => s.trim()).filter(Boolean);
-    t.body = document.getElementById('template-edit-body').value.trim();
-    t.ending = document.getElementById('template-edit-ending').value.trim();
-    t.tags = document.getElementById('template-edit-tags').value.split(/\s+|,|，/).map(s => s.replace('#','').trim()).filter(Boolean);
-    t.sourceLink = document.getElementById('template-edit-source-link').value.trim();
+    const hook = prompt('钩子：', t.hook);
+    if (hook === null) return;
+    const body = prompt('正文：', t.body);
+    if (body === null) return;
+    const ending = prompt('结尾：', t.ending);
+    if (ending === null) return;
+    t.hook = hook; t.body = body; t.ending = ending;
+    t.sellingPoints = extractSellingPoints(hook + ' ' + body);
+    t.tags = extractTags(hook + ' ' + body + ' ' + ending);
     save(KEYS.templates, state.templates);
-    closeTemplateEditModal();
     renderTemplates();
-    updateScriptTemplateOptions();
     toast('模板已更新');
   }
 
@@ -945,7 +818,7 @@
       try {
         const data = JSON.parse(reader.result);
         if (Array.isArray(data)) {
-          state.templates = data.map(t => normalizeTemplate(t));
+          state.templates = data;
           save(KEYS.templates, state.templates);
           renderTemplates();
           toast('模板导入成功');
@@ -958,216 +831,15 @@
     reader.readAsText(file);
   }
 
-  function normalizeTemplate(t) {
-    return {
-      id: t.id || uid('tpl'),
-      title: t.title || '未命名模板',
-      hook: t.hook || '',
-      painPoint: t.painPoint || t.pain_point || t.pain || '',
-      itchPoint: t.itchPoint || t.itch_point || t.itch || '',
-      sellingPoints: Array.isArray(t.sellingPoints) ? t.sellingPoints : (Array.isArray(t.selling_points) ? t.selling_points : []),
-      body: t.body || t.bodyStructure || t.body_structure || '',
-      ending: t.ending || '',
-      tags: Array.isArray(t.tags) ? t.tags : [],
-      favorite: !!t.favorite,
-      source: t.source || '导入',
-      sourceLink: t.sourceLink || t.source_link || t.url || ''
-    };
-  }
-
-  function importCollectedData(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        let rows = [];
-        if (ext === 'csv') {
-          rows = parseCsv(reader.result);
-        } else if (ext === 'xlsx' || ext === 'xls') {
-          rows = parseXlsx(e.target.result);
-        } else {
-          toast('仅支持 CSV/Excel 文件');
-          input.value = '';
-          return;
-        }
-        const imported = rows.map(r => collectedRowToTemplate(r)).filter(Boolean);
-        if (imported.length) {
-          state.templates = imported.concat(state.templates);
-          save(KEYS.templates, state.templates);
-          renderTemplates();
-          toast('已导入 ' + imported.length + ' 条采集数据');
-        } else {
-          toast('未识别到有效数据');
-        }
-      } catch (err) {
-        toast('导入失败：' + err.message);
-      }
-      input.value = '';
-    };
-    if (ext === 'csv') {
-      reader.readAsText(file);
-    } else {
-      reader.readAsArrayBuffer(file);
-    }
-  }
-
-  function parseCsv(text) {
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) return [];
-    const headers = parseCsvLine(lines[0]);
-    return lines.slice(1).map(line => {
-      const values = parseCsvLine(line);
-      const row = {};
-      headers.forEach((h, i) => row[h] = values[i] || '');
-      return row;
-    });
-  }
-
-  function parseCsvLine(line) {
-    const result = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (ch === ',' && !inQuotes) {
-        result.push(cur.trim());
-        cur = '';
-      } else {
-        cur += ch;
-      }
-    }
-    result.push(cur.trim());
-    return result;
-  }
-
-  function parseXlsx(buffer) {
-    if (typeof XLSX === 'undefined') throw new Error('Excel 解析库未加载');
-    const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }).filter(r => r.some(c => c !== undefined && c !== ''));
-    if (rows.length < 2) return [];
-    const headers = rows[0].map(h => String(h).trim());
-    return rows.slice(1).map(r => {
-      const obj = {};
-      headers.forEach((h, i) => obj[h] = r[i] !== undefined ? String(r[i]) : '');
-      return obj;
-    });
-  }
-
-  function collectedRowToTemplate(row) {
-    // 支持爬虫导出的字段名（中文）
-    const platform = row['平台'] || row['platform'] || '';
-    const keyword = row['关键词'] || row['keyword'] || '';
-    const category = row['赛道标签'] || row['category'] || '';
-    const title = row['标题'] || row['title'] || keyword || '未命名';
-    const content = row['完整文案/正文'] || row['content'] || row['正文'] || '';
-    const url = row['作品链接'] || row['url'] || row['链接'] || '';
-    const hookPain = row['钩子/痛点'] || row['hook_pain'] || '';
-    const valueOutput = row['价值输出'] || row['value_output'] || '';
-    const guidance = row['引导话术'] || row['guidance'] || '';
-    const ending = row['结尾转化'] || row['ending'] || '';
-    const author = row['发布账号'] || row['author'] || '';
-
-    if (!content && !hookPain && !valueOutput) return null;
-
-    const tags = [keyword, category, platform].filter(Boolean);
-    const bodyParts = [];
-    if (valueOutput) bodyParts.push(valueOutput);
-    if (guidance) bodyParts.push(guidance);
-
-    return {
-      id: uid('tpl'),
-      title: (title || keyword || '采集模板').slice(0, 40),
-      hook: hookPain || content.slice(0, 60),
-      painPoint: hookPain,
-      itchPoint: '',
-      sellingPoints: [],
-      body: bodyParts.join('\n') || content,
-      ending: ending || content.slice(-60),
-      tags: tags,
-      favorite: false,
-      source: '采集',
-      sourceLink: url,
-      _meta: { platform, keyword, category, author }
-    };
-  }
-
-  function openWeeklyCollection() {
-    app.nav('templates');
-    const ta = document.getElementById('template-input');
-    if (ta) {
-      ta.focus();
-      ta.scrollIntoView({ behavior: 'smooth' });
-    }
-    toast('请在左侧粘贴爆款文案并点击智能解析');
-  }
-
   // Scripts
-  let currentScriptId = null;
-  let currentScriptFormat = 'douyin';
-
   function updateScriptTemplateOptions() {
     const sel = document.getElementById('script-template');
     if (!sel) return;
     sel.innerHTML = state.templates.map(t => '<option value="' + t.id + '">' + escapeHtml(t.title) + '</option>').join('');
   }
 
-  function inferAudience(theme) {
-    if (!theme) return '有需求的姐妹';
-    const t = theme.toLowerCase();
-    if (/超声炮|热玛吉|抗衰|下垂|松弛/.test(t)) return '30+脸开始下垂的姐妹';
-    if (/玻尿酸|法令纹|轮廓|凹陷|填充/.test(t)) return '有凹陷、法令纹困扰的姐妹';
-    if (/光子|水光|熬夜|暗沉|毛孔|提亮/.test(t)) return '熬夜肌、暗沉脸的姐妹';
-    if (/试管|备孕|AMH|多囊|促排|取卵|移植/.test(t)) return '正在备孕的姐妹';
-    if (/双眼皮|眼袋|眼/.test(t)) return '想改善眼型的姐妹';
-    return '有需求的姐妹';
-  }
-
-  function autoInferAudience() {
-    const theme = document.getElementById('script-theme').value.trim();
-    const audienceInput = document.getElementById('script-audience');
-    if (!audienceInput.dataset.userEdited) {
-      audienceInput.placeholder = inferAudience(theme);
-    }
-  }
-
-  function updateScriptFramework() {
-    const tplId = document.getElementById('script-template')?.value;
-    const tpl = state.templates.find(t => t.id === tplId);
-    const card = document.getElementById('script-framework-card');
-    const box = document.getElementById('script-framework');
-    if (!tpl || !card || !box) return;
-    card.classList.remove('hidden');
-    box.innerHTML =
-      '<div><span class="font-medium text-stone-800">钩子结构：</span>' + escapeHtml(tpl.hook) + '</div>' +
-      '<div><span class="font-medium text-stone-800">痛点切入：</span>' + escapeHtml(tpl.painPoint || '（未设置）') + '</div>' +
-      '<div><span class="font-medium text-stone-800">痒点设计：</span>' + escapeHtml(tpl.itchPoint || '（未设置）') + '</div>' +
-      '<div><span class="font-medium text-stone-800">卖点排列：</span>' + (tpl.sellingPoints || []).map(s => '·' + escapeHtml(s)).join(' ') + '</div>' +
-      '<div><span class="font-medium text-stone-800">正文结构：</span>' + escapeHtml(tpl.body) + '</div>' +
-      '<div><span class="font-medium text-stone-800">结尾转化：</span>' + escapeHtml(tpl.ending) + '</div>' +
-      '<div><span class="font-medium text-stone-800">标签组合：</span>' + (tpl.tags || []).map(tag => '#' + escapeHtml(tag)).join(' ') + '</div>';
-  }
-
-  function setScriptFormat(fmt) {
-    currentScriptFormat = fmt;
-    document.getElementById('fmt-douyin').className = fmt === 'douyin' ? 'px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm' : 'px-3 py-1 rounded-md text-xs font-medium text-stone-500';
-    document.getElementById('fmt-xhs').className = fmt === 'xhs' ? 'px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm' : 'px-3 py-1 rounded-md text-xs font-medium text-stone-500';
-    document.getElementById('fmt-both').className = fmt === 'both' ? 'px-3 py-1 rounded-md text-xs font-medium bg-white text-stone-700 shadow-sm' : 'px-3 py-1 rounded-md text-xs font-medium text-stone-500';
-    renderScriptOutput();
-  }
-
-  function fillPlaceholders(text, theme, audience) {
-    const effect = theme;
-    return text.replace(/\[项目\]/g, theme).replace(/\[人群\]/g, audience).replace(/\[效果\]/g, effect);
+  function updateScriptPreview() {
+    // optional: show selected template info
   }
 
   function highlightBanned(text) {
@@ -1180,81 +852,62 @@
     return { html, count };
   }
 
-  function applyFramework(tpl, theme, audience) {
-    return {
-      hook: fillPlaceholders(tpl.hook, theme, audience),
-      pain: tpl.painPoint ? fillPlaceholders(tpl.painPoint, theme, audience) : '',
-      itch: tpl.itchPoint ? fillPlaceholders(tpl.itchPoint, theme, audience) : '',
-      sellingPoints: (tpl.sellingPoints || []).map(p => fillPlaceholders(p, theme, audience)),
-      body: fillPlaceholders(tpl.body, theme, audience),
-      ending: fillPlaceholders(tpl.ending, theme, audience),
-      tags: (tpl.tags || []).slice(0, 5)
+  function fillPlaceholders(text, project, audience) {
+    return text.replace(/\[项目\]/g, project).replace(/\[人群\]/g, audience);
+  }
+
+  function generateScriptForTemplate(tpl, project, audience, style, platform, index) {
+    const intros = {
+      professional: '作为一名深耕' + (platform === '抖音' ? '医美与生殖健康' : '医美护肤') + '领域的博主，今天想和大家聊一个高频问题：',
+      warm: '姐妹们，最近后台收到很多关于「' + project + '」的私信，今天统一来聊聊。',
+      pain: '你是不是也遇到过这种情况：' + audience + '，试了很多方法都没用？',
+      success: '上周一位' + audience + '的姐妹来反馈，做完' + project + '后效果超出预期。'
     };
-  }
-
-  function generateDouyinScript(tpl, theme, audience) {
-    const f = applyFramework(tpl, theme, audience);
-    const parts = [];
-    parts.push(f.hook + '，' + f.pain);
-    if (f.itch) parts.push(f.itch);
-    parts.push(f.body);
-    if (f.sellingPoints.length) {
-      parts.push('这也是我选它的原因：' + f.sellingPoints.join('，'));
+    const intro = intros[style] || intros.professional;
+    const hook = fillPlaceholders(tpl.hook, project, audience);
+    const points = tpl.sellingPoints.map(p => '· ' + fillPlaceholders(p, project, audience)).join('\n');
+    const body = fillPlaceholders(tpl.body, project, audience);
+    const ending = fillPlaceholders(tpl.ending, project, audience);
+    const projectLine = '今天聊的项目是：' + project + '，适合' + audience + '。';
+    const tags = tpl.tags && tpl.tags.length ? tpl.tags.slice(0, 5).map(t => '#' + t).join(' ') : '#医美 #备孕 #变美';
+    let content = '';
+    if (platform === '抖音') {
+      content = hook + '\n\n' + intro + '\n' + projectLine + '\n' + body + '\n\n核心卖点：\n' + points + '\n\n' + ending;
+    } else {
+      content = '✨ ' + hook + '\n\n' + intro + '\n' + projectLine + '\n' + body + '\n\n' + points + '\n\n' + ending + '\n\n' + tags;
     }
-    parts.push(f.ending);
-    return parts.join('。') + '。';
-  }
-
-  function generateXhsScript(tpl, theme, audience) {
-    const f = applyFramework(tpl, theme, audience);
-    let s = '✨ ' + f.hook + '\n\n';
-    if (f.pain) s += '😣 痛点\n' + f.pain + '\n\n';
-    if (f.itch) s += '💡 痒点\n' + f.itch + '\n\n';
-    s += '📝 正文\n' + f.body + '\n\n';
-    if (f.sellingPoints.length) s += '📌 卖点\n' + f.sellingPoints.map(p => '· ' + p).join('\n') + '\n\n';
-    s += '🎯 结尾\n' + f.ending + '\n\n';
-    s += f.tags.map(t => '#' + t).join(' ');
-    return s;
+    content += '\n\n—— ' + platform + '变体' + (index + 1) + ' ——';
+    return content;
   }
 
   function generateScripts() {
     const tplId = document.getElementById('script-template').value;
-    const theme = document.getElementById('script-theme').value.trim();
-    if (!theme) { toast('请输入新主题/内容中心'); return; }
-    let audience = document.getElementById('script-audience').value.trim();
-    if (!audience) audience = inferAudience(theme);
+    const project = document.getElementById('script-project').value.trim() || '光子嫩肤';
+    const audience = document.getElementById('script-audience').value.trim() || '25-35岁熬夜肌';
+    const style = document.getElementById('script-style').value;
+    const count = parseInt(document.getElementById('script-count').value, 10);
     const tpl = state.templates.find(t => t.id === tplId);
-    if (!tpl) { toast('请先选择模板'); return; }
+    if (!tpl) { toast('请先添加模板'); return; }
 
-    const douyin = generateDouyinScript(tpl, theme, audience);
-    const xhs = generateXhsScript(tpl, theme, audience);
-    const script = { id: uid('scr'), title: tpl.title + ' · ' + theme, theme, audience, templateId: tplId, douyin, xhs, createdAt: new Date().toISOString() };
-    state.scripts.unshift(script);
-    save(KEYS.scripts, state.scripts);
-    currentScriptId = script.id;
-    updateScriptFramework();
-    renderScriptOutput();
-    renderLibrary();
-    toast('文案已生成');
-  }
-
-  function copyScriptText(type) {
-    const s = state.scripts.find(x => x.id === currentScriptId);
-    if (!s) return;
-    const text = type === 'douyin' ? s.douyin : s.xhs;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板')).catch(() => fallbackCopy(text));
-    } else {
-      fallbackCopy(text);
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      const douyin = generateScriptForTemplate(tpl, project, audience, style, '抖音', i);
+      const xhs = generateScriptForTemplate(tpl, project, audience, style, '小红书', i);
+      results.push({ id: uid('scr'), title: tpl.title + ' - ' + project + '（变体' + (i + 1) + '）', project, audience, style, douyin, xhs, createdAt: new Date().toISOString() });
     }
+    state.scripts = results.concat(state.scripts);
+    save(KEYS.scripts, state.scripts);
+    renderScriptResultsList();
+    renderLibrary();
+    toast('已生成 ' + count + ' 组脚本');
   }
 
-  function saveCurrentScriptToLibrary() {
-    toast('已保存到素材库');
+  function saveScriptToLibrary(id) {
+    toast('脚本已保存在素材库');
   }
 
-  function createDraftFromCurrentScript() {
-    const s = state.scripts.find(x => x.id === currentScriptId);
+  function createDraftFromScript(id) {
+    const s = state.scripts.find(x => x.id === id);
     if (!s) return;
     openDraftModal();
     document.getElementById('draft-title').value = s.title;
@@ -1262,27 +915,179 @@
     document.getElementById('draft-xhs').value = s.xhs;
   }
 
-  function renderScriptOutput() {
-    const container = document.getElementById('scripts-results');
-    const empty = document.getElementById('scripts-empty');
-    const s = state.scripts.find(x => x.id === currentScriptId);
-    if (!s) { container.innerHTML = ''; empty.classList.remove('hidden'); return; }
-    empty.classList.add('hidden');
+  // Covers
+  function setCoverStyle(idx) {
+    state.coverStyle = idx;
+    const names = ['樱花粉轻奢', '轻奢金礼遇', '前后对比', '信任背书'];
+    document.getElementById('cover-style-name').textContent = names[idx];
+    renderCoverPreview();
+  }
 
-    const cards = [];
-    const showDouyin = currentScriptFormat === 'douyin' || currentScriptFormat === 'both';
-    const showXhs = currentScriptFormat === 'xhs' || currentScriptFormat === 'both';
+  function getCoverDimensions() {
+    const size = document.getElementById('cover-size').value;
+    return size === '3:4' ? { w: 1080, h: 1440 } : { w: 1080, h: 1920 };
+  }
 
-    if (showDouyin) {
-      const d = highlightBanned(s.douyin);
-      cards.push('<div class="bg-stone-50 rounded-xl p-4"><div class="flex items-center justify-between mb-2"><span class="font-bold text-stone-700">抖音口播稿</span><span class="text-red-500 text-xs">违禁词 ' + d.count + ' 个</span></div><div class="whitespace-pre-wrap text-sm text-stone-700 leading-relaxed mb-3">' + d.html + '</div><div class="flex gap-2"><button class="text-xs px-3 py-1.5 rounded-lg bg-white border border-beige-200 text-stone-600 hover:bg-stone-100" onclick="app.copyScriptText(\'douyin\')">复制</button><button class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100" onclick="app.createDraftFromCurrentScript()">发草稿</button></div></div>');
+  function renderCoverPreview() {
+    const canvas = document.getElementById('cover-canvas');
+    const dims = getCoverDimensions();
+    canvas.width = dims.w;
+    canvas.height = dims.h;
+    const ctx = canvas.getContext('2d');
+    const title = document.getElementById('cover-title').value || '标题';
+    const subtitle = document.getElementById('cover-subtitle').value || '副标题';
+    const project = document.getElementById('cover-project').value || '项目名';
+
+    const w = dims.w, h = dims.h;
+    ctx.clearRect(0, 0, w, h);
+
+    const style = state.coverStyle;
+    if (style === 0) {
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      g.addColorStop(0, '#fff1f2');
+      g.addColorStop(1, '#e7e5e4');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(253,164,175,0.15)';
+      ctx.beginPath(); ctx.arc(w * 0.8, h * 0.2, 300, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#881337';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 90px "Noto Sans SC", sans-serif';
+      wrapText(ctx, title, w / 2, h * 0.42, w - 120, 110);
+      ctx.fillStyle = '#a1626b';
+      ctx.font = '46px "Noto Sans SC", sans-serif';
+      wrapText(ctx, subtitle, w / 2, h * 0.58, w - 120, 70);
+      ctx.fillStyle = '#fda4af';
+      ctx.fillRect(w / 2 - 120, h * 0.66, 240, 4);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '34px "Noto Sans SC", sans-serif';
+      ctx.fillText(project, w / 2, h * 0.72);
+    } else if (style === 1) {
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      g.addColorStop(0, '#fffbeb');
+      g.addColorStop(1, '#fde68a');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(180,83,9,0.08)';
+      ctx.beginPath(); ctx.arc(w * 0.2, h * 0.75, 360, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      roundRect(ctx, w * 0.1, h * 0.36, w * 0.8, h * 0.28, 30);
+      ctx.fill();
+      ctx.strokeStyle = '#d97706'; ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#92400e';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 78px "Noto Sans SC", sans-serif';
+      wrapText(ctx, title, w / 2, h * 0.48, w - 200, 96);
+      ctx.fillStyle = '#b45309';
+      ctx.font = '44px "Noto Sans SC", sans-serif';
+      ctx.fillText(subtitle, w / 2, h * 0.55);
+      ctx.fillStyle = '#fff';
+      roundRect(ctx, w * 0.25, h * 0.72, w * 0.5, 80, 40);
+      ctx.fill();
+      ctx.fillStyle = '#b45309';
+      ctx.font = 'bold 38px "Noto Sans SC", sans-serif';
+      ctx.fillText(project, w / 2, h * 0.72 + 54);
+    } else if (style === 2) {
+      ctx.fillStyle = '#f3f4f6';
+      ctx.fillRect(0, 0, w / 2, h);
+      ctx.fillStyle = '#ffe4e6';
+      ctx.fillRect(w / 2, 0, w / 2, h);
+      ctx.fillStyle = '#374151';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 56px "Noto Sans SC", sans-serif';
+      ctx.fillText('Before', w / 4, h * 0.18);
+      ctx.fillStyle = '#be123c';
+      ctx.fillText('After', w * 0.75, h * 0.18);
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 72px "Noto Sans SC", sans-serif';
+      wrapText(ctx, title, w / 2, h * 0.45, w - 120, 90);
+      ctx.fillStyle = '#4b5563';
+      ctx.font = '44px "Noto Sans SC", sans-serif';
+      wrapText(ctx, subtitle, w / 2, h * 0.58, w - 120, 64);
+      ctx.fillStyle = '#be123c';
+      ctx.font = '40px "Noto Sans SC", sans-serif';
+      ctx.fillText(project, w / 2, h * 0.72);
+    } else if (style === 3) {
+      ctx.fillStyle = '#fafaf9';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#fda4af';
+      ctx.font = 'bold 260px serif';
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 0.15;
+      ctx.fillText('“', 80, 360);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#881337';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 68px "Noto Sans SC", sans-serif';
+      wrapText(ctx, title, w / 2, h * 0.42, w - 160, 86);
+      ctx.fillStyle = '#a1626b';
+      ctx.font = '46px "Noto Sans SC", sans-serif';
+      wrapText(ctx, subtitle, w / 2, h * 0.56, w - 160, 70);
+      ctx.fillStyle = '#fda4af';
+      ctx.fillRect(w / 2 - 80, h * 0.62, 160, 4);
+      ctx.fillStyle = '#78716c';
+      ctx.font = '34px "Noto Sans SC", sans-serif';
+      ctx.fillText('—— ' + project + ' 真实分享', w / 2, h * 0.68);
     }
-    if (showXhs) {
-      const x = highlightBanned(s.xhs);
-      cards.push('<div class="bg-rose-50 rounded-xl p-4"><div class="flex items-center justify-between mb-2"><span class="font-bold text-stone-700">小红书种草笔记</span><span class="text-red-500 text-xs">违禁词 ' + x.count + ' 个</span></div><div class="whitespace-pre-wrap text-sm text-stone-700 leading-relaxed mb-3">' + x.html + '</div><div class="flex gap-2"><button class="text-xs px-3 py-1.5 rounded-lg bg-white border border-beige-200 text-stone-600 hover:bg-stone-100" onclick="app.copyScriptText(\'xhs\')">复制</button><button class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100" onclick="app.createDraftFromCurrentScript()">发草稿</button></div></div>');
-    }
+  }
 
-    container.innerHTML = '<div class="card p-4 border border-beige-200"><div class="flex items-center justify-between mb-3"><h4 class="font-bold text-stone-800">' + escapeHtml(s.title) + '</h4><button class="text-xs px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" onclick="app.saveCurrentScriptToLibrary()">保存到素材库</button></div><div class="space-y-4">' + cards.join('') + '</div></div>';
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const chars = text.split('');
+    let line = '';
+    let cy = y;
+    for (let n = 0; n < chars.length; n++) {
+      const testLine = line + chars[n];
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        ctx.fillText(line, x, cy);
+        line = chars[n];
+        cy += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, cy);
+  }
+
+  function downloadCover() {
+    const canvas = document.getElementById('cover-canvas');
+    const link = document.createElement('a');
+    link.download = 'cover_' + state.coverStyle + '_' + dateStr() + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  function batchDownloadCovers() {
+    const original = state.coverStyle;
+    [0, 1, 2, 3].forEach((i, idx) => {
+      setTimeout(() => {
+        setCoverStyle(i);
+        const canvas = document.getElementById('cover-canvas');
+        const link = document.createElement('a');
+        link.download = 'cover_batch_' + i + '_' + dateStr() + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }, idx * 400);
+    });
+    setTimeout(() => {
+      setCoverStyle(original);
+      toast('4张封面已开始下载');
+    }, 4 * 400 + 100);
   }
 
   // Library
@@ -1330,16 +1135,33 @@
     state.scripts = state.scripts.filter(s => s.id !== id);
     save(KEYS.scripts, state.scripts);
     renderLibrary();
-    renderScriptOutput();
+    renderScriptResultsList();
   }
 
-  function createDraftFromScript(id) {
-    const s = state.scripts.find(x => x.id === id);
-    if (!s) return;
-    openDraftModal();
-    document.getElementById('draft-title').value = s.title;
-    document.getElementById('draft-douyin').value = s.douyin;
-    document.getElementById('draft-xhs').value = s.xhs;
+  function renderScriptResultsList() {
+    const container = document.getElementById('scripts-results');
+    if (!container) return;
+    container.innerHTML = '';
+    if (state.scripts.length) document.getElementById('scripts-empty').classList.add('hidden');
+    else document.getElementById('scripts-empty').classList.remove('hidden');
+    state.scripts.slice(0, 20).forEach(r => {
+      const d = highlightBanned(r.douyin);
+      const x = highlightBanned(r.xhs);
+      const div = document.createElement('div');
+      div.className = 'card p-4 border border-beige-200';
+      div.innerHTML = '<div class="flex items-center justify-between mb-3">' +
+        '<h4 class="font-bold text-stone-800">' + escapeHtml(r.title) + '</h4>' +
+        '<div class="flex gap-2">' +
+          '<button class="text-xs px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" onclick="app.viewScript(\'' + r.id + '\')">查看</button>' +
+          '<button class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100" onclick="app.createDraftFromScript(\'' + r.id + '\')">发草稿</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">' +
+        '<div class="bg-stone-50 rounded-xl p-3"><p class="font-medium text-stone-500 mb-1">抖音口播稿 <span class="text-red-500 text-xs">违禁词 ' + d.count + ' 个</span></p><div class="whitespace-pre-wrap text-stone-700 leading-relaxed line-clamp-6">' + d.html + '</div></div>' +
+        '<div class="bg-rose-50 rounded-xl p-3"><p class="font-medium text-stone-500 mb-1">小红书种草笔记 <span class="text-red-500 text-xs">违禁词 ' + x.count + ' 个</span></p><div class="whitespace-pre-wrap text-stone-700 leading-relaxed line-clamp-6">' + x.html + '</div></div>' +
+      '</div>';
+      container.appendChild(div);
+    });
   }
 
   function exportLibrary() {
@@ -1392,14 +1214,7 @@
     document.getElementById('draft-xhs').value = '';
     document.getElementById('draft-status').value = '草稿';
     const box = document.getElementById('draft-accounts');
-    box.innerHTML = state.accounts.map(a => {
-      const badge = a.platform === '抖音' ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-stone-800 text-white">抖音</span>' : '<span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500 text-white">小红书</span>';
-      return '<label class="flex items-center gap-2 text-sm text-stone-700 p-1.5 rounded-lg hover:bg-white cursor-pointer">' +
-        '<input type="checkbox" value="' + a.id + '" class="accent-rose-400 w-4 h-4">' +
-        '<div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ' + accountColorClass(a.platform) + '">' + escapeHtml(a.avatar || accountAvatar(a.name)) + '</div>' +
-        '<div class="flex-1 min-w-0"><div class="font-medium truncate">' + escapeHtml(a.name) + '</div><div class="flex gap-1 mt-0.5">' + badge + '<span class="text-xs text-stone-400">' + escapeHtml(a.group) + '</span></div></div>' +
-      '</label>';
-    }).join('');
+    box.innerHTML = state.accounts.map(a => '<label class="flex items-center gap-2 text-sm text-stone-700"><input type="checkbox" value="' + a.id + '" class="accent-rose-400"> ' + escapeHtml(a.name) + ' <span class="text-xs text-stone-400">(' + a.platform + ')</span></label>').join('');
   }
 
   function closeDraftModal() {
@@ -1531,31 +1346,25 @@
     closeAccountModal,
     saveAccount,
     editAccount: openAccountModal,
-    confirmDeleteAccount,
-    closeConfirmModal,
+    deleteAccount,
     parseTemplate,
     saveParsedTemplate,
     toggleFavTemplate,
-    confirmDeleteTemplate,
+    deleteTemplate,
     viewTemplate,
-    editTemplate: openTemplateEditModal,
-    closeTemplateEditModal,
-    saveTemplateEdit,
+    editTemplate,
     exportTemplates,
     importTemplates,
-    importCollectedData,
-    openWeeklyCollection,
     fetchDailyTemplates,
     updateScriptTemplateOptions,
-    updateScriptFramework,
-    autoInferAudience,
+    updateScriptPreview,
     generateScripts,
-    setScriptFormat,
-    copyScriptText,
-    saveCurrentScriptToLibrary,
+    saveScriptToLibrary,
     createDraftFromScript,
-    createDraftFromCurrentScript,
-    renderScriptOutput,
+    setCoverStyle,
+    renderCoverPreview,
+    downloadCover,
+    batchDownloadCovers,
     viewScript,
     deleteScript,
     exportLibrary,
