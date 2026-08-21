@@ -100,8 +100,8 @@ def run_login_only(config: Dict[str, Any], logger) -> None:
             try:
                 input("按回车继续...")
             except EOFError:
-                logger.warning("非交互式环境，等待 60 秒后关闭...")
-                time.sleep(60)
+                logger.warning("非交互式环境，等待 600 秒，请尽快完成登录...")
+                time.sleep(600)
         finally:
             scraper.stop()
 
@@ -114,8 +114,8 @@ def run_login_only(config: Dict[str, Any], logger) -> None:
             try:
                 input("按回车继续...")
             except EOFError:
-                logger.warning("非交互式环境，等待 60 秒后关闭...")
-                time.sleep(60)
+                logger.warning("非交互式环境，等待 600 秒，请尽快完成登录...")
+                time.sleep(600)
         finally:
             scraper.stop()
 

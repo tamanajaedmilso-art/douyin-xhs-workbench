@@ -107,14 +107,22 @@ class BaseScraper(ABC):
             json.dump(cookies, f, ensure_ascii=False, indent=2)
         self.logger.info(f"[{self.platform}] 已保存 Cookie")
 
-    def safe_goto(self, url: str, wait_until: str = "networkidle", timeout: int = 30000) -> bool:
-        """安全跳转页面，失败返回 False"""
+    def safe_goto(self, url: str, wait_until: str = "domcontentloaded", timeout: int = 60000) -> bool:
+        """安全跳转页面，失败返回 False。先用 domcontentloaded 避免动态页 networkidle 超时。"""
         try:
             self.page.goto(url, wait_until=wait_until, timeout=timeout)
             return True
         except Exception as e:
-            self.logger.error(f"[{self.platform}] 访问失败: {url}, 错误: {e}")
-            return False
+            self.logger.warning(f"[{self.platform}] 页面加载未完全完成: {url}, 尝试继续...")
+            # 即使 wait_until 超时，页面可能已可用，再给它 3 秒并检查标题
+            try:
+                time.sleep(3)
+                title = self.page.title()
+                self.logger.info(f"[{self.platform}] 页面标题: {title}, URL: {self.page.url}")
+                return True
+            except Exception:
+                self.logger.error(f"[{self.platform}] 访问失败: {url}, 错误: {e}")
+                return False
 
     def random_wait(self) -> None:
         """按配置随机等待"""
@@ -139,9 +147,9 @@ class BaseScraper(ABC):
             try:
                 input("按回车继续...")
             except EOFError:
-                # 非交互式环境，等待 60 秒
-                self.logger.warning("非交互式环境，等待 60 秒...")
-                time.sleep(60)
+                # 非交互式环境，等待 600 秒
+                self.logger.warning("非交互式环境，等待 600 秒，请尽快完成登录...")
+                time.sleep(600)
 
     def is_login_page(self) -> bool:
         """检测当前是否在登录页，子类可覆盖"""

@@ -23,7 +23,11 @@ class XiaohongshuScraper(BaseScraper):
         self.logger.info(f"[xiaohongshu] 开始搜索关键词: {keyword}")
         search_url = f"{self.BASE_URL}/search_result?keyword={keyword}&source=web_search_result_notes"
         if not self.safe_goto(search_url):
-            return []
+            # 重试一次
+            self.logger.warning(f"[xiaohongshu] 第一次搜索失败，3 秒后重试...")
+            time.sleep(3)
+            if not self.safe_goto(search_url):
+                return []
 
         time.sleep(3)
         self.wait_for_manual_login()
@@ -46,14 +50,18 @@ class XiaohongshuScraper(BaseScraper):
         self.logger.info(f"[xiaohongshu] 关键词 [{keyword}] 搜索到 {len(results)} 条结果")
 
         detailed = []
-        for card in results[:max_results]:
+        for i, card in enumerate(results[:max_results]):
             try:
+                self.logger.info(f"[xiaohongshu] 正在采集第 {i+1}/{len(results[:max_results])} 条详情: {card.get('url')}")
                 detail = self.parse_detail(card["url"])
                 card.update(detail)
                 if self._pass_threshold(card):
                     card["keyword"] = keyword
                     card["platform"] = "xiaohongshu"
                     detailed.append(card)
+                    self.logger.info(f"[xiaohongshu] 采集成功: {card.get('title', '')[:30]}，点赞 {card.get('likes', 0)}")
+                else:
+                    self.logger.info(f"[xiaohongshu] 未通过阈值过滤: {card.get('title', '')[:30]}")
                 self.random_wait()
             except Exception as e:
                 self.logger.error(f"[xiaohongshu] 详情页采集失败: {card.get('url')}, {e}")
@@ -95,9 +103,15 @@ class XiaohongshuScraper(BaseScraper):
 
     def parse_detail(self, url: str) -> Dict[str, Any]:
         """进入笔记详情页采集完整信息"""
-        if not self.safe_goto(url, wait_until="domcontentloaded"):
+        if not self.safe_goto(url):
             return {}
-        time.sleep(2)
+        time.sleep(3)
+
+        # 调试：记录页面标题和 URL
+        try:
+            self.logger.info(f"[xiaohongshu] 详情页标题: {self.page.title()}, URL: {self.page.url}")
+        except Exception:
+            pass
 
         data = {
             "content": "",
@@ -190,6 +204,15 @@ class XiaohongshuScraper(BaseScraper):
             except Exception:
                 continue
 
+        # 兜底：如果正文选择器都没找到，从 body 文本提取
+        if not data["content"]:
+            try:
+                page_text = self.page.inner_text("body")
+                data["content"] = re.sub(r'\s+', ' ', page_text).strip()[:300]
+            except Exception:
+                pass
+
+        self.logger.info(f"[xiaohongshu] 详情解析结果: 文案 {len(data['content'])} 字, 点赞 {data['likes']}, 评论 {data['comments']}, 收藏 {data['collections']}")
         return data
 
     def _pass_threshold(self, item: Dict[str, Any]) -> bool:
