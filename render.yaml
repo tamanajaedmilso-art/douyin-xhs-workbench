@@ -10,11 +10,5 @@ services:
         value: production
       - key: API_KEY
         generateValue: true
-      - key: DATA_DIR
-        value: /var/render/data
       - key: FRONTEND_ORIGINS
         value: ''
-    disk:
-      name: backend-data
-      mountPath: /var/render/data
-      sizeGB: 1
