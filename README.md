@@ -120,26 +120,83 @@ cd douyin-xhs-workbench
 
 如果你希望本地爬虫跑完后，网页能自动拉取最新爆款数据，需要部署一个小后端。
 
-### 方案：一键部署到 Render（免费）
+### 方案 C：本地后端 + Cloudflare Tunnel（免费，无需信用卡）
+
+适合不想绑卡、后端运行在自己电脑上的场景。电脑关机后外部访问会中断，但网页里的数据已保存在 localStorage。
+
+#### 1. 准备 cloudflared
+
+```bash
+# 安装 cloudflared（已包含在项目 .tools/node/bin 则跳过）
+mkdir -p .tools/node/bin
+curl -Lo /tmp/cloudflared-darwin-arm64.tgz https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-arm64.tgz
+tar -xzf /tmp/cloudflared-darwin-arm64.tgz -C /tmp
+cp /tmp/cloudflared .tools/node/bin/cloudflared
+chmod +x .tools/node/bin/cloudflared
+```
+
+#### 2. 一键启动
+
+```bash
+cd douyin-xhs-workbench
+./start-backend.sh
+```
+
+脚本会：
+- 启动后端 `server.js`（默认端口 3000）
+- 启动 Cloudflare Tunnel，生成公网 URL
+- 打印访问地址和 API Key
+- 询问是否自动写入 `crawler/config.json`
+
+输出示例：
+
+```
+公网访问地址：
+  https://xxxxx.trycloudflare.com
+
+API Key: dwxh_backend_key_2026
+```
+
+#### 3. 把地址填到网页
+
+1. 打开线上网页：https://douyin-xhs-workbench.vercel.app
+2. 进入「备份/设置」
+3. 填写：
+   - 后端地址：`https://xxxxx.trycloudflare.com`
+   - API Key：`dwxh_backend_key_2026`
+   - 勾选「进入爆款模板时自动同步」
+4. 点击「保存配置」→「立即同步」
+
+#### 4. 停止
+
+```bash
+./stop-backend.sh
+```
+
+> 每次重新启动 `./start-backend.sh`，Cloudflare Tunnel URL 都会变化，需要重新填入网页和 `crawler/config.json`。
+
+---
+
+### 方案 A：一键部署到 Render（免费，需绑卡验证）
 
 1. 访问 GitHub 仓库页面，找到 README 顶部的 **「Deploy to Render」** 按钮。
 2. 点击后按提示登录/注册 Render 账号。
-3. Render 会自动读取 `render.yaml` 创建 Web Service 和 1GB 磁盘。
-4. 部署完成后，Render 会给你类似 `https://douyin-xhs-workbench-backend-xxx.onrender.com` 的域名。
-5. 复制这个域名，填入网页「备份/设置」→「后端同步设置」→「后端地址」。
-6. 在 Render Dashboard → Environment 里找到 `API_KEY`，复制到网页的「API Key」输入框。
-7. 勾选「进入爆款模板时自动同步」，点击「保存配置」。
+3. Render 会自动读取 `render.yaml` 创建 Web Service。
+4. 按提示添加信用卡（仅验证，免费套餐不扣费）。
+5. 部署完成后，Render 会给你类似 `https://douyin-xhs-workbench-backend-xxx.onrender.com` 的域名。
+6. 复制这个域名，填入网页「备份/设置」→「后端同步设置」→「后端地址」。
+7. 在 Render Dashboard → Environment 里找到 `API_KEY`，复制到网页的「API Key」输入框。
+8. 勾选「进入爆款模板时自动同步」，点击「保存配置」。
 
 ### 后端环境变量
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
-| `API_KEY` | 爬虫推送时必须携带的密钥 | Render 自动生成 |
-| `DATA_DIR` | SQLite 数据库目录 | `/var/render/data` |
+| `API_KEY` | 爬虫推送时必须携带的密钥 | 自动生成 |
 | `FRONTEND_ORIGINS` | 额外允许的跨域前端域名，逗号分隔 | 空 |
 | `PORT` | 服务端口 | 3000 |
 
-### 本地运行后端
+### 本地运行后端（不带 Tunnel）
 
 ```bash
 # 安装依赖

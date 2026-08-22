@@ -1,5 +1,8 @@
 {
-  "platforms": ["douyin", "xiaohongshu"],
+  "platforms": [
+    "douyin",
+    "xiaohongshu"
+  ],
   "keywords": [
     "医美",
     "试管",
