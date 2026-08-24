@@ -1,5 +1,6 @@
 import re
 import time
+from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
@@ -19,6 +20,8 @@ class DouyinScraper(BaseScraper):
     def __init__(self, config: Dict[str, Any], logger):
         super().__init__("douyin", config, logger)
         self.thresholds = config.get("thresholds", {}).get("douyin", {})
+        self.category_map = config.get("category_map", {})
+        self.category_rules = config.get("category_rules", {})
 
     def search(self, keyword: str, max_results: int = 20) -> List[Dict[str, Any]]:
         """按关键词搜索抖音视频"""
@@ -56,18 +59,19 @@ class DouyinScraper(BaseScraper):
 
         # 进入详情页补全数据
         detailed = []
+        category = self.category_map.get(keyword, "其他")
         for i, card in enumerate(results[:max_results]):
             try:
                 self.logger.info(f"[douyin] 正在采集第 {i+1}/{len(results[:max_results])} 条详情: {card.get('url')}")
                 detail = self.parse_detail(card["url"])
                 card.update(detail)
-                if self._pass_threshold(card):
+                if self._pass_threshold(card, category):
                     card["keyword"] = keyword
                     card["platform"] = "douyin"
                     detailed.append(card)
                     self.logger.info(f"[douyin] 采集成功: {card.get('title', '')[:30]}，点赞 {card.get('likes', 0)}")
                 else:
-                    self.logger.info(f"[douyin] 未通过阈值过滤: {card.get('title', '')[:30]}")
+                    self.logger.info(f"[douyin] 未通过类目规则过滤: {card.get('title', '')[:30]}")
                 self.random_wait()
             except Exception as e:
                 self.logger.error(f"[douyin] 详情页采集失败: {card.get('url')}, {e}")
@@ -167,11 +171,49 @@ class DouyinScraper(BaseScraper):
         except Exception:
             pass
 
-        self.logger.info(f"[douyin] 详情解析结果: 文案 {len(data['content'])} 字, 点赞 {data['likes']}, 评论 {data['comments']}, 收藏 {data['collections']}")
+        # 提取评论文本（用于医美类精准评论过滤）
+        data["comments_text"] = self._extract_comments()
+
+        self.logger.info(f"[douyin] 详情解析结果: 文案 {len(data['content'])} 字, 点赞 {data['likes']}, 评论 {data['comments']}, 收藏 {data['collections']}, 抓取评论 {len(data['comments_text'])}")
         return data
 
-    def _pass_threshold(self, item: Dict[str, Any]) -> bool:
-        """按阈值过滤。thresholds 的 key 是 likes_min，对应 item 的 likes。"""
+    def _extract_comments(self, max_comments: int = 20) -> List[str]:
+        """滚动评论区，抓取前 N 条评论文本"""
+        comments = []
+        try:
+            # 尝试多种评论文本选择器
+            selectors = [
+                '[data-e2e="comment-list"] span',
+                '[class*="comment"] [class*="text"] span',
+                '[class*="comment"] span',
+                '.comment-mainContent span',
+                'div[role="listitem"] span',
+            ]
+            # 先滚动几次加载评论
+            for _ in range(3):
+                self.human_scroll(count=2)
+                time.sleep(1)
+
+            for sel in selectors:
+                try:
+                    elements = self.page.query_selector_all(sel)
+                    for el in elements:
+                        text = (el.inner_text() or "").strip()
+                        if text and len(text) > 2 and text not in comments:
+                            comments.append(text)
+                        if len(comments) >= max_comments:
+                            break
+                    if comments:
+                        break
+                except Exception:
+                    continue
+        except Exception as e:
+            self.logger.warning(f"[douyin] 评论抓取失败: {e}")
+        return comments[:max_comments]
+
+    def _pass_threshold(self, item: Dict[str, Any], category: str = "其他") -> bool:
+        """按类目规则过滤。先检查全局阈值，再检查类目特殊规则。"""
+        # 全局阈值
         key_map = {
             "likes_min": "likes",
             "comments_min": "comments",
@@ -183,4 +225,59 @@ class DouyinScraper(BaseScraper):
             item_key = key_map.get(threshold_key, threshold_key)
             if min_val and item.get(item_key, 0) < min_val:
                 return False
+
+        rules = self.category_rules.get(category, {})
+        if not rules:
+            return True
+
+        # 类目点赞阈值
+        likes_min = rules.get("likes_min")
+        if likes_min and item.get("likes", 0) < likes_min:
+            return False
+
+        # 发布时间限制（试管婴儿：6 个月内）
+        max_age_days = rules.get("max_age_days")
+        if max_age_days:
+            published_at = item.get("published_at", "")
+            if not self._within_days(published_at, max_age_days):
+                self.logger.info(f"[douyin] 未通过发布时间过滤: {published_at}, 要求 {max_age_days} 天内")
+                return False
+
+        # 标题/文案负面关键词排除（医美：过滤引流爆款，排除负面内容）
+        exclude_title_keywords = rules.get("exclude_title_keywords", [])
+        if exclude_title_keywords:
+            text_to_check = f"{item.get('title', '')} {item.get('content', '')}"
+            matched_negative = [kw for kw in exclude_title_keywords if kw in text_to_check]
+            if matched_negative:
+                self.logger.info(f"[douyin] 未通过负面关键词过滤: 命中 {matched_negative}")
+                return False
+
+        # 评论关键词过滤（医美：评论区含精准关键词）
+        comment_keywords = rules.get("comment_keywords", [])
+        if comment_keywords:
+            comments_text = item.get("comments_text", [])
+            joined = " ".join(comments_text)
+            matched = [kw for kw in comment_keywords if kw in joined]
+            if not matched:
+                self.logger.info(f"[douyin] 未通过评论关键词过滤: 评论中未找到 {comment_keywords}")
+                return False
+            item["matched_comment_keywords"] = matched
+
         return True
+
+    def _within_days(self, published_at: str, days: int) -> bool:
+        """判断发布时间是否在 N 天内。published_at 格式如 20260820"""
+        if not published_at:
+            return False
+        try:
+            pub_date = datetime.strptime(str(published_at), "%Y%m%d")
+            cutoff = datetime.now() - timedelta(days=days)
+            return pub_date >= cutoff
+        except ValueError:
+            # 尝试 ISO 格式
+            try:
+                pub_date = datetime.fromisoformat(str(published_at).replace("Z", "+00:00"))
+                cutoff = datetime.now(pub_date.tzinfo) - timedelta(days=days)
+                return pub_date >= cutoff
+            except Exception:
+                return False
