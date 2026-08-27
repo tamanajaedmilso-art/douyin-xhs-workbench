@@ -10,6 +10,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -64,6 +65,12 @@
       </a>
       <a href="#" data-page="scripts" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('scripts'); return false;">
         <i data-lucide="file-text"></i> 脚本批量生成
+      </a>
+      <a href="#" data-page="covers" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('covers'); return false;">
+        <i data-lucide="image"></i> 封面批量生成
+      </a>
+      <a href="#" data-page="xhsimg" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('xhsimg'); return false;">
+        <i data-lucide="layout-grid"></i> 小红书图文
       </a>
       <a href="#" data-page="library" class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-stone-500 hover:bg-rose-50 hover:text-rose-500 transition" onclick="app.nav('library'); return false;">
         <i data-lucide="archive"></i> 素材资料库
@@ -211,6 +218,192 @@
               <i data-lucide="file-text" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
               <p>填写左侧参数后点击生成</p>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Covers -->
+    <section id="page-covers" class="section max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-stone-800">封面批量生成</h2>
+        <button class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.exportCovers()">
+          <i data-lucide="download" class="w-4 h-4"></i> 全部下载
+        </button>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-6 h-fit lg:col-span-1 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">封面标题</label>
+            <input id="cover-title" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：曼谷超声炮抗衰" value="曼谷超声炮抗衰">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">副标题 / 卖点</label>
+            <input id="cover-subtitle" type="text" class="w-full rounded-xl px-3 py-2 text-sm" placeholder="例如：本地评分9.9 · 名媛贵妇口碑" value="本地评分9.9 · 名媛贵妇口碑">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">尺寸</label>
+            <select id="cover-ratio" class="w-full rounded-xl px-3 py-2 text-sm">
+              <option value="9:16">抖音 9:16 (1080×1920)</option>
+              <option value="3:4">小红书 3:4 (1080×1440)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">风格模板</label>
+            <select id="cover-style" class="w-full rounded-xl px-3 py-2 text-sm">
+              <option value="0">高级米白 · 极简医美</option>
+              <option value="1">浅粉玫瑰 · 温柔种草</option>
+              <option value="2">浅灰冷调 · 专业科技</option>
+              <option value="3">暖杏光影 · 氛围故事</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">批量生成数量</label>
+            <select id="cover-count" class="w-full rounded-xl px-3 py-2 text-sm">
+              <option value="1">1 张</option>
+              <option value="3">3 张</option>
+              <option value="6">6 张</option>
+              <option value="9">9 张</option>
+            </select>
+          </div>
+          <button class="btn-primary w-full py-2.5 rounded-xl text-sm font-medium" onclick="app.generateCovers()">生成封面</button>
+        </div>
+        <div class="lg:col-span-2">
+          <div id="covers-empty" class="text-center py-16 text-stone-400">
+            <i data-lucide="image" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+            <p>填写左侧参数后生成封面</p>
+          </div>
+          <div id="covers-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- XHS Image-Text Batch Generator -->
+    <section id="page-xhsimg" class="section max-w-7xl mx-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-stone-800">小红书图文批量生成器</h2>
+        <div class="flex gap-2">
+          <button class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.downloadCurrentXhsImage()">
+            <i data-lucide="download" class="w-4 h-4"></i> 下载当前
+          </button>
+          <button class="btn-primary px-4 py-2 rounded-xl text-sm flex items-center gap-2" onclick="app.downloadAllXhsImages()">
+            <i data-lucide="package" class="w-4 h-4"></i> 打包下载
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4" style="min-height:calc(100vh - 200px);">
+        <!-- Left: Template Config -->
+        <div class="lg:col-span-3 card p-4 space-y-4 overflow-y-auto" style="max-height:calc(100vh - 180px);">
+          <h3 class="font-bold text-stone-800 text-sm">模板配置</h3>
+          <div>
+            <label class="block text-xs text-stone-500 mb-1">画布尺寸</label>
+            <select id="xhs-cfg-size" class="w-full rounded-lg px-2 py-1.5 text-sm" onchange="app.renderXhsPreview()">
+              <option value="1080x1440">小红书 3:4 (1080×1440)</option>
+              <option value="1080x1920">抖音 9:16 (1080×1920)</option>
+              <option value="1242x1660">小红书 3:4 高清</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-stone-500 mb-1">背景类型</label>
+            <select id="xhs-cfg-bgtype" class="w-full rounded-lg px-2 py-1.5 text-sm" onchange="app.renderXhsPreview()">
+              <option value="gradient">渐变色</option>
+              <option value="solid">纯色</option>
+              <option value="image">图片</option>
+            </select>
+          </div>
+          <div id="xhs-bg-gradient-opts" class="space-y-2">
+            <div class="flex gap-2">
+              <input id="xhs-cfg-bg1" type="color" value="#fff1f2" class="w-10 h-8 rounded" onchange="app.renderXhsPreview()">
+              <input id="xhs-cfg-bg2" type="color" value="#ffe4e6" class="w-10 h-8 rounded" onchange="app.renderXhsPreview()">
+              <span class="text-xs text-stone-500 self-center">渐变起止色</span>
+            </div>
+          </div>
+          <div id="xhs-bg-solid-opts" class="hidden">
+            <input id="xhs-cfg-bgsolid" type="color" value="#fff1f2" class="w-10 h-8 rounded" onchange="app.renderXhsPreview()">
+          </div>
+          <div id="xhs-bg-image-opts" class="hidden">
+            <label class="btn-secondary px-3 py-1.5 rounded-lg text-xs cursor-pointer block text-center">
+              上传背景图
+              <input type="file" class="hidden" accept="image/*" onchange="app.uploadXhsBgImage(this)">
+            </label>
+            <p class="text-xs text-stone-400 mt-1">建议尺寸与画布一致</p>
+          </div>
+          <div class="border-t border-beige-200 pt-3 space-y-3">
+            <h4 class="text-xs font-medium text-stone-600">标题样式</h4>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="xhs-cfg-title-size" type="number" value="72" class="w-full rounded-lg px-2 py-1.5 text-sm" onchange="app.renderXhsPreview()">
+              <input id="xhs-cfg-title-color" type="color" value="#881337" class="w-full h-9 rounded" onchange="app.renderXhsPreview()">
+            </div>
+            <div>
+              <label class="block text-xs text-stone-500 mb-1">标题位置</label>
+              <select id="xhs-cfg-title-pos" class="w-full rounded-lg px-2 py-1.5 text-sm" onchange="app.renderXhsPreview()">
+                <option value="top">顶部居中</option>
+                <option value="center">中部居中</option>
+                <option value="upper">中上部</option>
+              </select>
+            </div>
+          </div>
+          <div class="border-t border-beige-200 pt-3 space-y-3">
+            <h4 class="text-xs font-medium text-stone-600">正文样式</h4>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="xhs-cfg-body-size" type="number" value="40" class="w-full rounded-lg px-2 py-1.5 text-sm" onchange="app.renderXhsPreview()">
+              <input id="xhs-cfg-body-color" type="color" value="#57534e" class="w-full h-9 rounded" onchange="app.renderXhsPreview()">
+            </div>
+            <div>
+              <label class="block text-xs text-stone-500 mb-1">最大行数</label>
+              <input id="xhs-cfg-body-lines" type="number" value="12" class="w-full rounded-lg px-2 py-1.5 text-sm" onchange="app.renderXhsPreview()">
+            </div>
+          </div>
+          <div class="border-t border-beige-200 pt-3 space-y-3">
+            <h4 class="text-xs font-medium text-stone-600">标签样式</h4>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="xhs-cfg-tag-size" type="number" value="32" class="w-full rounded-lg px-2 py-1.5 text-sm" onchange="app.renderXhsPreview()">
+              <input id="xhs-cfg-tag-color" type="color" value="#be123c" class="w-full h-9 rounded" onchange="app.renderXhsPreview()">
+            </div>
+          </div>
+          <div class="border-t border-beige-200 pt-3 space-y-3">
+            <h4 class="text-xs font-medium text-stone-600">装饰元素</h4>
+            <div class="flex items-center gap-2">
+              <input id="xhs-cfg-deco" type="checkbox" checked onchange="app.renderXhsPreview()">
+              <label for="xhs-cfg-deco" class="text-xs text-stone-600">显示装饰圆点</label>
+            </div>
+            <div>
+              <label class="block text-xs text-stone-500 mb-1">水印文字</label>
+              <input id="xhs-cfg-watermark" type="text" value="@爆款内容工作台" class="w-full rounded-lg px-2 py-1.5 text-sm" oninput="app.renderXhsPreview()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Center: Preview -->
+        <div class="lg:col-span-5 card p-4 flex flex-col" style="max-height:calc(100vh - 180px);">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-stone-800 text-sm">实时预览</h3>
+            <div class="flex gap-2">
+              <button class="text-xs px-2 py-1 rounded-lg bg-stone-100 text-stone-600" onclick="app.prevXhsImage()">上一张</button>
+              <span id="xhs-preview-index" class="text-xs self-center text-stone-500">0 / 0</span>
+              <button class="text-xs px-2 py-1 rounded-lg bg-stone-100 text-stone-600" onclick="app.nextXhsImage()">下一张</button>
+            </div>
+          </div>
+          <div class="flex-1 bg-stone-100 rounded-xl overflow-hidden flex items-center justify-center relative" id="xhs-preview-box">
+            <canvas id="xhs-preview-canvas" class="max-h-full max-w-full shadow-lg"></canvas>
+            <div id="xhs-preview-empty" class="absolute inset-0 flex items-center justify-center text-stone-400 text-sm">
+              输入文案后点击生成
+            </div>
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button class="btn-primary flex-1 py-2 rounded-xl text-sm font-medium" onclick="app.generateXhsImages()">生成图文</button>
+            <button class="btn-secondary px-4 py-2 rounded-xl text-sm" onclick="app.deleteCurrentXhsImage()">删除当前</button>
+          </div>
+        </div>
+
+        <!-- Right: Text Input -->
+        <div class="lg:col-span-4 card p-4 flex flex-col" style="max-height:calc(100vh - 180px);">
+          <h3 class="font-bold text-stone-800 text-sm mb-3">文案批量输入</h3>
+          <p class="text-xs text-stone-500 mb-2">格式：标题：xxx / 正文：xxx / 标签：#tag1 #tag2<br>多篇用 --- 分隔</p>
+          <textarea id="xhs-text-input" class="flex-1 w-full rounded-xl p-3 text-sm resize-none" placeholder="标题：超声炮抗衰真实体验&#10;正文：来曼谷做超声炮抗衰，我真的找到了轮廓收紧的神。直接拯救了我的下颌线模糊，之前法令纹加深、苹果肌下垂，每天对着镜子内耗，自卑又崩溃。&#10;标签：#曼谷医美 #超声炮抗衰 #医美&#10;---&#10;标题：水光针怎么选&#10;正文：水光针不是越贵越好，看懂成分再掏钱。熬夜肌、暗沉脸的姐妹，皮肤干燥、卡粉、细纹多，不知道选什么水光针。&#10;标签：#水光针 #医美 #护肤"></textarea>
+          <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-stone-500">
+            <div class="bg-beige-50 rounded-lg p-2">已识别 <span id="xhs-parse-count" class="font-bold">0</span> 篇</div>
+            <div class="bg-beige-50 rounded-lg p-2">已生成 <span id="xhs-gen-count" class="font-bold">0</span> 张</div>
           </div>
         </div>
       </div>
@@ -450,6 +643,129 @@
 
   const BANNED_WORDS = ['最好','最佳','第一','顶级','国家级','特效','根治','无效退款','保证','绝对','100%','零风险','永久','立刻','马上','一针见效','神药','包治','秘方','纯天然无副作用','医美贷','整容贷'];
 
+  // 项目词库：用于 1:1 复刻模板结构时做语义替换
+  const PROJECT_DICT = {
+    '超声炮': {
+      category: '医美', audience: '30+脸开始下垂的姐妹',
+      problems: ['下颌线模糊','法令纹加深','苹果肌下垂','脸开始松垮','轮廓不清晰'],
+      effects: ['轮廓收紧','法令纹变浅','下颌线清晰','面部整体向上','紧致感明显'],
+      worries: ['怕痛','怕效果不明显','怕维持时间短','怕伤到神经','怕脸凹'],
+      aesthetics: ['自然紧致','拒绝过度提拉','保留原生轮廓','高级耐老的紧致感'],
+      procedure: ['先做面部评估','画出能量区域','分层施打','术后敷修护面膜']
+    },
+    '热玛吉': {
+      category: '医美', audience: '30+皮肤开始松弛的姐妹',
+      problems: ['皮肤松弛','细纹增多','毛孔变大','法令纹明显','整体肤质下降'],
+      effects: ['皮肤收紧','细纹淡化','毛孔细腻','整体肤质提升','胶原蛋白感回归'],
+      worries: ['怕痛','怕红肿','怕没效果','怕维持时间短','怕不适合自己'],
+      aesthetics: ['紧致但不紧绷','自然年轻感','拒绝假面'],
+      procedure: ['敷麻药','打网格','按区域操作','术后加强补水防晒']
+    },
+    '玻尿酸': {
+      category: '医美', audience: '有凹陷、法令纹困扰的姐妹',
+      problems: ['法令纹深','太阳穴凹','面颊凹陷','鼻基底低','轮廓不流畅'],
+      effects: ['凹陷填平','轮廓流畅','面部饱满','减龄自然','立体度提升'],
+      worries: ['怕假面','怕栓塞','怕移位','怕打太多','怕不自然'],
+      aesthetics: ['原生饱满','骨相支撑','拒绝馒化','少量精准'],
+      procedure: ['面诊沟通','设计点位','少量多次','术后塑形按压']
+    },
+    '水光针': {
+      category: '医美', audience: '熬夜肌、暗沉脸的姐妹',
+      problems: ['皮肤干燥','卡粉','暗沉','细纹','毛孔粗大'],
+      effects: ['水润透亮','上妆服帖','肤色均匀','毛孔细腻','光泽感提升'],
+      worries: ['怕反黑','怕过敏','怕破皮','怕恢复期长','怕成分不适合'],
+      aesthetics: ['水光但不假亮','由内而外透亮','原生好皮肤'],
+      procedure: ['清洁敷麻','选择配方','均匀导入','术后24小时不化妆']
+    },
+    '光子嫩肤': {
+      category: '医美', audience: '肤色暗沉、有红血丝的姐妹',
+      problems: ['肤色不均','红血丝','痘印','暗沉','毛孔粗大'],
+      effects: ['肤色提亮','红血丝减少','痘印变淡','整体肤质均匀','毛孔细致'],
+      worries: ['怕痛','怕反黑','怕过敏','怕没效果','怕恢复期'],
+      aesthetics: ['均匀透亮','健康好气色','拒绝假白'],
+      procedure: ['皮肤检测','涂凝胶','按模式操作','冰敷镇静']
+    },
+    '瘦脸针': {
+      category: '医美', audience: '咬肌大、脸宽的姐妹',
+      problems: ['咬肌肥大','脸宽','轮廓硬朗','拍照不上镜','脸不对称'],
+      effects: ['咬肌变小','轮廓柔和','脸小一圈','线条更流畅','上镜更自然'],
+      worries: ['怕凹陷','怕蛙腮','怕没效果','怕反弹','怕选错产品'],
+      aesthetics: ['线条柔和','自然小脸','拒绝过度瘦脸'],
+      procedure: ['咬肌评估','标记注射点','精准施打','术后避免按摩']
+    },
+    '双眼皮': {
+      category: '医美', audience: '想改善眼型的姐妹',
+      problems: ['单眼皮','肿眼泡','眼睛无神','眼皮松弛','内双不明显'],
+      effects: ['眼睛有神','双眼皮自然','放大双眼','整体更精神','妆容更好化'],
+      worries: ['怕不自然','怕肉条感','怕留疤','怕宽度不合适','怕修复'],
+      aesthetics: ['自然开扇','符合眼型','拒绝过宽过假'],
+      procedure: ['设计双眼皮形态','模拟效果','手术操作','术后冷敷']
+    },
+    '三代试管': {
+      category: '试管婴儿', audience: '高龄或有染色体异常风险的夫妻',
+      problems: ['反复流产','染色体异常','胎停','高龄卵子质量下降','遗传病风险'],
+      effects: ['筛查胚胎染色体','降低胎停风险','提高着床率','优生优育','少走弯路'],
+      worries: ['怕费用高','怕促排辛苦','怕没可用胚胎','怕成功率低','怕身体吃不消'],
+      aesthetics: [],
+      procedure: ['前期检查','促排取卵','胚胎培养','染色体筛查','移植']
+    },
+    '试管取卵': {
+      category: '试管婴儿', audience: '正在试管的姐妹',
+      problems: ['怕痛','担心卵子质量','怕卵泡少','紧张焦虑','怕恢复慢'],
+      effects: ['全麻无痛','获卵数量清晰','术后恢复快','为胚胎培养做准备','心里踏实'],
+      worries: ['怕痛','怕腹水','怕卵子质量不好','怕卵泡空','怕术后感染'],
+      aesthetics: [],
+      procedure: ['促排监测','夜针','全麻取卵','术后观察休息']
+    },
+    '试管移植': {
+      category: '试管婴儿', audience: '正在试管的姐妹',
+      problems: ['不敢动','过度紧张','怕着床失败','担心胚胎质量','焦虑等待'],
+      effects: ['顺利着床','接好孕','心态平稳','身体状态好','医生建议明确'],
+      worries: ['怕着床失败','怕流产','怕要不要卧床','怕用药不对','怕情绪影响'],
+      aesthetics: [],
+      procedure: ['内膜准备','移植手术','黄体支持','验孕等待']
+    },
+    '促排': {
+      category: '试管婴儿', audience: '正在试管的姐妹',
+      problems: ['卵泡发育慢','卵子质量差','激素水平不稳','担心取卵少','打针焦虑'],
+      effects: ['卵泡又大又圆','激素水平稳定','获卵数理想','卵子质量好','周期顺利'],
+      worries: ['怕卵巢过度刺激','怕打针痛','怕卵泡长不好','怕费用高','怕身体负担'],
+      aesthetics: [],
+      procedure: ['制定方案','每天打针','定期B超监测','调整用药','夜针取卵']
+    },
+    '多囊备孕': {
+      category: '试管婴儿', audience: '多囊卵巢的姐妹',
+      problems: ['月经不调','排卵难','胰岛素抵抗','备孕压力大','体重难控制'],
+      effects: ['月经规律','自然排卵','体重下降','成功怀孕','状态改善'],
+      worries: ['怕怀不上','怕复发','怕药物依赖','怕体重反弹','怕过程太长'],
+      aesthetics: [],
+      procedure: ['生活方式调整','控制胰岛素','监测排卵','必要时药物促排']
+    },
+    'AMH低': {
+      category: '试管婴儿', audience: 'AMH偏低的姐妹',
+      problems: ['卵子储备少','焦虑早衰','担心怀孕能力','周期不规律','压力大'],
+      effects: ['卵巢功能改善','卵子质量提升','自然怀孕','试管顺利','心态平稳'],
+      worries: ['怕卵巢早衰','怕没卵子','怕试管失败','怕被骗','怕乱吃药'],
+      aesthetics: [],
+      procedure: ['综合评估','调理方案','监测卵泡','适时促排或试管']
+    }
+  };
+  // 兜底词库：当输入主题不在 PROJECT_DICT 时，按关键词匹配取最近似
+  function findProjectDict(theme) {
+    if (!theme) return null;
+    if (PROJECT_DICT[theme]) return PROJECT_DICT[theme];
+    for (const [k, v] of Object.entries(PROJECT_DICT)) {
+      if (theme.includes(k)) return v;
+      if (k.includes(theme)) return v;
+    }
+    // 模糊匹配
+    const t = theme.toLowerCase();
+    for (const [k, v] of Object.entries(PROJECT_DICT)) {
+      if (k.split('').some(c => t.includes(c)) && k.length > 1) return v;
+    }
+    return null;
+  }
+
   const ACCOUNT_GROUPS = ['医美机构','试管备孕','个人IP','其他'];
   const PLATFORMS = ['抖音','小红书'];
 
@@ -484,7 +800,7 @@
     { id: 'tpl_10', title: '试管费用解析', hook: '做一次[项目]到底要花多少钱？', painPoint: '[人群]做[项目]费用不透明，怕预算不够被坑', itchPoint: '提前了解[项目]费用明细，心里有底', sellingPoints: ['检查费','促排费','手术费'], body: '[项目]费用因人而异，主要包括前期检查、促排药物、取卵移植等。公立医院和私立机构差异较大。', ending: '想拿费用明细表？私信“费用”领取。', tags: ['试管费用','备孕','预算'], favorite: false, source: '内置' },
     { id: 'tpl_11', title: '法令纹填充真相', hook: '[项目]深，不是填越多越好看！', painPoint: '[项目]显老、显疲惫，填充又怕假面', itchPoint: '自然饱满的[项目]效果，年轻5岁', sellingPoints: ['分型治疗','填充+提升联合','避免假面感'], body: '[项目]成因复杂，可能是鼻基底凹陷、皮肤松弛或表情习惯。要分型治疗，填充+提升联合更自然。', ending: '评论区发照片，帮你判断类型。', tags: ['法令纹','填充','抗衰'], favorite: false, source: '内置' },
     { id: 'tpl_12', title: '双眼皮修复', hook: '[项目]做坏了，什么时候能修复？', painPoint: '[项目]后肉条感、宽深假、不对称，后悔当初选择', itchPoint: '[项目]修复后眼睛自然有神，重拾自信', sellingPoints: ['术后6个月以上评估','分型修复思路','选经验丰富的医生'], body: '一般建议[项目]术后6个月以上再评估修复。肉条感、宽深假、不对称都有不同的修复思路。', ending: '需要修复建议的姐妹，私信我。', tags: ['双眼皮','修复','医美'], favorite: false, source: '内置' },
-    { id: 'tpl_13', title: '曼谷全身美白故事流', hook: '来曼谷做[项目]，我真的找到了全身美白的神', painPoint: '直接拯救了我的黄黑粗糙皮，之前全身暗沉发黄、关节死角发黑，肤色斑驳不均、肌理坑坑洼洼，每天对着镜子身材肤色内耗，自卑又崩溃', itchPoint: '直到曼谷本地闺蜜安利，说这家的分层焕白技术在本地名媛圈层都传开了，搜了一下才知道本地评分竟高达9.9分，深耕全身肌肤精细化焕白十多年，专门做分层透亮冷白肌，给很多名媛贵妇、精致女生打理过全身肤质，专业实力实打实过硬', sellingPoints: [], body: '面诊操作前我还特别紧张，怕力度过重刺激泛红、怕假白僵硬、怕做完快速反黑，没想到性价比直接碾压国内同款高端美白项目，全套[项目]全身进阶焕白改造也才1W+。他家美白审美真的超级高级，坚决拒绝网红死白、假面假白，只做原生通透的自然冷白皮，全程操作温柔细致，还会耐心安抚情绪，根据每个人的肤色暗沉情况、肌肤耐受度精细化把控层次和力度，不过度护理、不强行提亮，最终通透干净的质感直接惊艳到我，这趟曼谷变美之旅真的选对了', ending: '近期打算来曼谷做[项目]、改善黄黑皮、想拥有通透冷白肌的[人群]，可以滴滴我哦', tags: ['曼谷医美','全身美白','医美'], favorite: false, source: '内置' }
+    { id: 'tpl_13', title: '曼谷故事流 · 高端医美体验', hook: '来曼谷做[项目]，我真的找到了[效果]的神', painPoint: '直接拯救了我的[问题1]，之前[问题2]、[问题3]，每天对着镜子内耗，自卑又崩溃', itchPoint: '直到曼谷本地闺蜜安利，说这家的[技术]在本地名媛圈层都传开了，搜了一下才知道本地评分竟高达9.9分，深耕[领域]十多年，专门做[效果]，给很多名媛贵妇、精致女生打理过，专业实力实打实过硬', sellingPoints: [], body: '面谈前我还特别紧张，怕[担忧1]、怕[担忧2]、怕[担忧3]，没想到性价比直接碾压国内同款高端项目，全套[项目]进阶改造也才1W+。他家审美真的超级高级，坚决拒绝[错误审美]，只做[正确审美]，全程操作温柔细致，还会耐心安抚情绪，根据每个人的情况精细化把控层次和力度，不过度护理、不强行改变，最终[效果1]直接惊艳到我，这趟曼谷变美之旅真的选对了', ending: '近期打算来曼谷做[项目]、改善[问题1]、想拥有[效果1]的[人群]，可以滴滴我哦', tags: ['曼谷医美','[项目]','医美'], favorite: false, source: '内置' }
   ];
 
   const DAILY_SEEDS = [
@@ -735,6 +1051,8 @@
       }
     }
     if (page === 'scripts') { updateScriptTemplateOptions(); autoInferAudience(); updateScriptFramework(); renderScriptOutput(); }
+    if (page === 'covers') { renderCovers(); }
+    if (page === 'xhsimg') { renderXhsPreview(); }
     if (page === 'settings') loadBackendConfig();
   }
 
@@ -745,6 +1063,8 @@
     autoInferAudience();
     updateScriptFramework();
     renderScriptOutput();
+    renderCovers();
+    renderXhsPreview();
     renderLibrary();
     renderDrafts();
     updateDailyInfo();
@@ -1279,8 +1599,34 @@
   }
 
   function fillPlaceholders(text, theme, audience) {
-    const effect = theme;
-    return text.replace(/\[项目\]/g, theme).replace(/\[人群\]/g, audience).replace(/\[效果\]/g, effect);
+    if (!text) return '';
+    const dict = findProjectDict(theme);
+    const problems = dict?.problems || ['相关问题','困扰明显','状态不佳'];
+    const effects = dict?.effects || [theme + '效果', '状态改善'];
+    const worries = dict?.worries || ['效果不好','过程不舒服','恢复慢'];
+    const aesthetics = dict?.aesthetics || ['自然高级','原生感'];
+    const procedure = dict?.procedure || ['专业面诊','个性化方案','精细操作'];
+
+    return text
+      .replace(/\[项目\]/g, theme)
+      .replace(/\[人群\]/g, audience)
+      .replace(/\[效果\]/g, effects[0] || theme)
+      .replace(/\[问题1\]/g, problems[0] || '')
+      .replace(/\[问题2\]/g, problems[1] || '')
+      .replace(/\[问题3\]/g, problems[2] || '')
+      .replace(/\[效果1\]/g, effects[0] || '')
+      .replace(/\[效果2\]/g, effects[1] || '')
+      .replace(/\[担忧1\]/g, (worries[0] || '').replace(/^怕/, ''))
+      .replace(/\[担忧2\]/g, (worries[1] || '').replace(/^怕/, ''))
+      .replace(/\[担忧3\]/g, (worries[2] || '').replace(/^怕/, ''))
+      .replace(/\[审美\]/g, aesthetics[0] || '自然高级')
+      .replace(/\[错误审美\]/g, (aesthetics[1] || '过度提拉').replace(/^拒绝/, ''))
+      .replace(/\[正确审美\]/g, aesthetics[0] || '原生自然')
+      .replace(/\[过程\]/g, procedure[0] || '专业操作')
+      .replace(/\[过程2\]/g, procedure[1] || '')
+      .replace(/\[过程3\]/g, procedure[2] || '')
+      .replace(/\[技术\]/g, theme + '技术')
+      .replace(/\[领域\]/g, theme + '领域');
   }
 
   function highlightBanned(text) {
@@ -1294,28 +1640,46 @@
   }
 
   function applyFramework(tpl, theme, audience) {
+    const tags = (tpl.tags || []).slice(0, 5).map(t => fillPlaceholders(t, theme, audience));
     return {
       hook: fillPlaceholders(tpl.hook, theme, audience),
-      pain: tpl.painPoint ? fillPlaceholders(tpl.painPoint, theme, audience) : '',
-      itch: tpl.itchPoint ? fillPlaceholders(tpl.itchPoint, theme, audience) : '',
+      pain: fillPlaceholders(tpl.painPoint, theme, audience),
+      itch: fillPlaceholders(tpl.itchPoint, theme, audience),
       sellingPoints: (tpl.sellingPoints || []).map(p => fillPlaceholders(p, theme, audience)),
       body: fillPlaceholders(tpl.body, theme, audience),
       ending: fillPlaceholders(tpl.ending, theme, audience),
-      tags: (tpl.tags || []).slice(0, 5)
+      tags
     };
+  }
+
+  function cleanScriptText(text) {
+    return text
+      .replace(/。{2,}/g, '。')
+      .replace(/，。/g, '。')
+      .replace(/！。/g, '！')
+      .replace(/？。/g, '？')
+      .replace(/，{2,}/g, '，')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   function generateDouyinScript(tpl, theme, audience) {
     const f = applyFramework(tpl, theme, audience);
     const parts = [];
-    parts.push(f.hook + '，' + f.pain);
+    if (f.hook) parts.push(f.hook);
+    if (f.pain) parts.push(f.pain);
     if (f.itch) parts.push(f.itch);
-    parts.push(f.body);
+    if (f.body) parts.push(f.body);
     if (f.sellingPoints.length) {
       parts.push('这也是我选它的原因：' + f.sellingPoints.join('，'));
     }
-    parts.push(f.ending);
-    return parts.join('。') + '。';
+    if (f.ending) parts.push(f.ending);
+    let script = parts.join('。').replace(/。{2,}/g, '。');
+    // 抖音口播稿语气词、口语化
+    script = script
+      .replace(/，这也是/g, '。这也是')
+      .replace(/评论区扣1/g, '评论区扣个 1');
+    return cleanScriptText(script + '。');
   }
 
   function generateXhsScript(tpl, theme, audience) {
@@ -1323,18 +1687,22 @@
     let s = '✨ ' + f.hook + '\n\n';
     if (f.pain) s += '😣 痛点\n' + f.pain + '\n\n';
     if (f.itch) s += '💡 痒点\n' + f.itch + '\n\n';
-    s += '📝 正文\n' + f.body + '\n\n';
+    if (f.body) s += '📝 正文\n' + f.body + '\n\n';
     if (f.sellingPoints.length) s += '📌 卖点\n' + f.sellingPoints.map(p => '· ' + p).join('\n') + '\n\n';
-    s += '🎯 结尾\n' + f.ending + '\n\n';
+    if (f.ending) s += '🎯 结尾\n' + f.ending + '\n\n';
     s += f.tags.map(t => '#' + t).join(' ');
-    return s;
+    return cleanScriptText(s);
   }
 
   function generateScripts() {
-    const tplId = document.getElementById('script-template').value;
-    const theme = document.getElementById('script-theme').value.trim();
+    const tplSel = document.getElementById('script-template');
+    const themeInput = document.getElementById('script-theme');
+    if (!tplSel || !themeInput) { toast('页面元素未加载，请刷新'); return; }
+    const tplId = tplSel.value;
+    const theme = themeInput.value.trim();
     if (!theme) { toast('请输入新主题/内容中心'); return; }
-    let audience = document.getElementById('script-audience').value.trim();
+    if (!state.templates || state.templates.length === 0) { toast('模板库为空，请先添加模板'); return; }
+    let audience = document.getElementById('script-audience')?.value.trim();
     if (!audience) audience = inferAudience(theme);
     const tpl = state.templates.find(t => t.id === tplId);
     if (!tpl) { toast('请先选择模板'); return; }
@@ -1396,6 +1764,454 @@
     }
 
     container.innerHTML = '<div class="card p-4 border border-beige-200"><div class="flex items-center justify-between mb-3"><h4 class="font-bold text-stone-800">' + escapeHtml(s.title) + '</h4><button class="text-xs px-3 py-1.5 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" onclick="app.saveCurrentScriptToLibrary()">保存到素材库</button></div><div class="space-y-4">' + cards.join('') + '</div></div>';
+  }
+
+  // Covers
+  const COVER_STYLES = [
+    { name: '高级米白', bg: ['#fbfaf8', '#f5f2ed'], accent: '#fb7185', text: '#57534e', sub: '#a8a29e', deco: '#fda4af' },
+    { name: '浅粉玫瑰', bg: ['#fff1f2', '#ffe4e6'], accent: '#be123c', text: '#881337', sub: '#9f1239', deco: '#fda4af' },
+    { name: '浅灰冷调', bg: ['#f5f5f4', '#e7e5e4'], accent: '#78716c', text: '#44403c', sub: '#a8a29e', deco: '#d6d3d1' },
+    { name: '暖杏光影', bg: ['#fff7ed', '#ffedd5'], accent: '#c2410c', text: '#7c2d12', sub: '#9a3412', deco: '#fdba74' }
+  ];
+
+  function getCoverSize(ratio) {
+    if (ratio === '3:4') return { w: 1080, h: 1440 };
+    return { w: 1080, h: 1920 };
+  }
+
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split('');
+    const lines = [];
+    let line = '';
+    for (const ch of words) {
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = ch;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function drawCover(canvas, title, subtitle, ratio, styleIdx, seed) {
+    const { w, h } = getCoverSize(ratio);
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const style = COVER_STYLES[styleIdx] || COVER_STYLES[0];
+
+    // 背景渐变
+    const grd = ctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, style.bg[0]);
+    grd.addColorStop(1, style.bg[1]);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    // 装饰几何
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = style.deco;
+    const r = 80 + (seed % 60);
+    ctx.beginPath();
+    ctx.arc(w * 0.85, h * 0.15, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(w * 0.1, h * 0.75, r * 1.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 顶部细线
+    ctx.strokeStyle = style.accent;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.1, h * 0.12);
+    ctx.lineTo(w * 0.35, h * 0.12);
+    ctx.stroke();
+
+    // 标题
+    ctx.fillStyle = style.text;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    let fontSize = 84;
+    ctx.font = 'bold ' + fontSize + 'px "Noto Sans SC", sans-serif';
+    const titleLines = wrapText(ctx, title, w * 0.78);
+    // 如果行数太多，缩小字体
+    while (titleLines.length > 3 && fontSize > 44) {
+      fontSize -= 6;
+      ctx.font = 'bold ' + fontSize + 'px "Noto Sans SC", sans-serif';
+    }
+    const lineHeight = fontSize * 1.25;
+    const startY = h * 0.38 - ((titleLines.length - 1) * lineHeight) / 2;
+    titleLines.forEach((line, i) => {
+      ctx.fillText(line, w / 2, startY + i * lineHeight);
+    });
+
+    // 副标题
+    if (subtitle) {
+      ctx.fillStyle = style.sub;
+      ctx.font = 'normal 40px "Noto Sans SC", sans-serif';
+      const subLines = wrapText(ctx, subtitle, w * 0.78);
+      const subY = startY + titleLines.length * lineHeight + 40;
+      subLines.forEach((line, i) => {
+        ctx.fillText(line, w / 2, subY + i * 50);
+      });
+    }
+
+    // 底部标签
+    ctx.fillStyle = style.accent;
+    ctx.font = 'normal 32px "Noto Sans SC", sans-serif';
+    ctx.fillText('@爆款内容工作台', w / 2, h * 0.88);
+
+    return canvas.toDataURL('image/png');
+  }
+
+  let generatedCovers = [];
+
+  function generateCovers() {
+    const title = document.getElementById('cover-title').value.trim() || '封面标题';
+    const subtitle = document.getElementById('cover-subtitle').value.trim();
+    const ratio = document.getElementById('cover-ratio').value;
+    const styleIdx = parseInt(document.getElementById('cover-style').value, 10) || 0;
+    const count = parseInt(document.getElementById('cover-count').value, 10) || 1;
+
+    generatedCovers = [];
+    const list = document.getElementById('covers-list');
+    const empty = document.getElementById('covers-empty');
+    list.innerHTML = '';
+    empty.classList.add('hidden');
+    list.classList.remove('hidden');
+
+    for (let i = 0; i < count; i++) {
+      const canvas = document.createElement('canvas');
+      const seed = Date.now() + i * 137;
+      const dataUrl = drawCover(canvas, title, subtitle, ratio, styleIdx, seed);
+      const id = uid('cov');
+      generatedCovers.push({ id, dataUrl, title, subtitle, ratio, styleIdx, createdAt: new Date().toISOString() });
+
+      const card = document.createElement('div');
+      card.className = 'card p-3 border border-beige-200';
+      card.innerHTML =
+        '<div class="bg-stone-100 rounded-lg overflow-hidden mb-3 flex items-center justify-center" style="height:280px;">' +
+          '<img src="' + dataUrl + '" class="max-h-full max-w-full object-contain">' +
+        '</div>' +
+        '<div class="flex gap-2">' +
+          '<a href="' + dataUrl + '" download="cover_' + (i + 1) + '_' + dateStr() + '.png" class="flex-1 text-center text-xs px-3 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200">下载</a>' +
+          '<button class="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" onclick="app.deleteCover(\'' + id + '\')">删除</button>' +
+        '</div>';
+      list.appendChild(card);
+    }
+    toast('已生成 ' + count + ' 张封面');
+  }
+
+  function deleteCover(id) {
+    if (!confirm('确定删除这张封面？')) return;
+    generatedCovers = generatedCovers.filter(c => c.id !== id);
+    renderCovers();
+  }
+
+  function renderCovers() {
+    const list = document.getElementById('covers-list');
+    const empty = document.getElementById('covers-empty');
+    if (!generatedCovers.length) {
+      list.innerHTML = '';
+      list.classList.add('hidden');
+      empty.classList.remove('hidden');
+      return;
+    }
+    list.classList.remove('hidden');
+    empty.classList.add('hidden');
+    list.innerHTML = generatedCovers.map((c, i) =>
+      '<div class="card p-3 border border-beige-200">' +
+        '<div class="bg-stone-100 rounded-lg overflow-hidden mb-3 flex items-center justify-center" style="height:280px;">' +
+          '<img src="' + c.dataUrl + '" class="max-h-full max-w-full object-contain">' +
+        '</div>' +
+        '<div class="flex gap-2">' +
+          '<a href="' + c.dataUrl + '" download="cover_' + (i + 1) + '_' + dateStr() + '.png" class="flex-1 text-center text-xs px-3 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200">下载</a>' +
+          '<button class="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" onclick="app.deleteCover(\'' + c.id + '\')">删除</button>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  }
+
+  function exportCovers() {
+    if (!generatedCovers.length) { toast('请先生成封面'); return; }
+    generatedCovers.forEach((c, i) => {
+      const a = document.createElement('a');
+      a.href = c.dataUrl;
+      a.download = 'cover_' + (i + 1) + '_' + dateStr() + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+    toast('开始批量下载封面');
+  }
+
+  // XHS Image-Text Batch Generator
+  let xhsGeneratedImages = [];
+  let xhsCurrentIndex = 0;
+  let xhsBgImage = null;
+
+  function getXhsConfig() {
+    const size = document.getElementById('xhs-cfg-size').value.split('x');
+    return {
+      w: parseInt(size[0], 10),
+      h: parseInt(size[1], 10),
+      bgType: document.getElementById('xhs-cfg-bgtype').value,
+      bg1: document.getElementById('xhs-cfg-bg1').value,
+      bg2: document.getElementById('xhs-cfg-bg2').value,
+      bgSolid: document.getElementById('xhs-cfg-bgsolid').value,
+      titleSize: parseInt(document.getElementById('xhs-cfg-title-size').value, 10) || 72,
+      titleColor: document.getElementById('xhs-cfg-title-color').value,
+      titlePos: document.getElementById('xhs-cfg-title-pos').value,
+      bodySize: parseInt(document.getElementById('xhs-cfg-body-size').value, 10) || 40,
+      bodyColor: document.getElementById('xhs-cfg-body-color').value,
+      bodyLines: parseInt(document.getElementById('xhs-cfg-body-lines').value, 10) || 12,
+      tagSize: parseInt(document.getElementById('xhs-cfg-tag-size').value, 10) || 32,
+      tagColor: document.getElementById('xhs-cfg-tag-color').value,
+      deco: document.getElementById('xhs-cfg-deco').checked,
+      watermark: document.getElementById('xhs-cfg-watermark').value
+    };
+  }
+
+  function parseXhsTexts(raw) {
+    if (!raw) return [];
+    const blocks = raw.split(/\n---\s*\n?|\n---$/).map(b => b.trim()).filter(Boolean);
+    return blocks.map((block, idx) => {
+      const titleMatch = block.match(/标题[:：]\s*(.+)(?:\n|$)/);
+      const bodyMatch = block.match(/正文[:：]\s*([\s\S]+?)(?=\n标签[:：]|\n---|$)/);
+      const tagMatch = block.match(/标签[:：]\s*(.+)(?:\n|$)?/);
+      return {
+        id: uid('xhs'),
+        title: titleMatch ? titleMatch[1].trim() : '标题' + (idx + 1),
+        body: bodyMatch ? bodyMatch[1].trim() : block.trim(),
+        tags: tagMatch ? tagMatch[1].trim().split(/\s+/).filter(Boolean) : []
+      };
+    });
+  }
+
+  function wrapCanvasText(ctx, text, maxWidth) {
+    const chars = text.split('');
+    const lines = [];
+    let line = '';
+    for (const ch of chars) {
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = ch;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function drawXhsImage(canvas, item, cfg) {
+    canvas.width = cfg.w;
+    canvas.height = cfg.h;
+    const ctx = canvas.getContext('2d');
+
+    // 背景
+    if (cfg.bgType === 'gradient') {
+      const grd = ctx.createLinearGradient(0, 0, 0, cfg.h);
+      grd.addColorStop(0, cfg.bg1);
+      grd.addColorStop(1, cfg.bg2);
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, cfg.w, cfg.h);
+    } else if (cfg.bgType === 'solid') {
+      ctx.fillStyle = cfg.bgSolid;
+      ctx.fillRect(0, 0, cfg.w, cfg.h);
+    } else if (cfg.bgType === 'image' && xhsBgImage) {
+      ctx.drawImage(xhsBgImage, 0, 0, cfg.w, cfg.h);
+    } else {
+      ctx.fillStyle = '#fff1f2';
+      ctx.fillRect(0, 0, cfg.w, cfg.h);
+    }
+
+    // 装饰
+    if (cfg.deco) {
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = cfg.tagColor;
+      ctx.beginPath(); ctx.arc(cfg.w * 0.85, cfg.h * 0.12, 90, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cfg.w * 0.12, cfg.h * 0.78, 110, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    const padding = cfg.w * 0.08;
+    const contentW = cfg.w - padding * 2;
+
+    // 标题
+    ctx.fillStyle = cfg.titleColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    let titleFontSize = cfg.titleSize;
+    ctx.font = 'bold ' + titleFontSize + 'px "Noto Sans SC", sans-serif';
+    let titleLines = wrapCanvasText(ctx, item.title, contentW);
+    while (titleLines.length > 2 && titleFontSize > 44) {
+      titleFontSize -= 6;
+      ctx.font = 'bold ' + titleFontSize + 'px "Noto Sans SC", sans-serif';
+      titleLines = wrapCanvasText(ctx, item.title, contentW);
+    }
+    let titleY;
+    if (cfg.titlePos === 'top') titleY = cfg.h * 0.12;
+    else if (cfg.titlePos === 'upper') titleY = cfg.h * 0.18;
+    else titleY = cfg.h * 0.45 - (titleLines.length * titleFontSize * 1.3) / 2;
+    titleLines.forEach((line, i) => {
+      ctx.fillText(line, cfg.w / 2, titleY + i * titleFontSize * 1.3);
+    });
+
+    // 正文
+    ctx.fillStyle = cfg.bodyColor;
+    ctx.textAlign = 'left';
+    ctx.font = 'normal ' + cfg.bodySize + 'px "Noto Sans SC", sans-serif';
+    const bodyLines = wrapCanvasText(ctx, item.body, contentW).slice(0, cfg.bodyLines);
+    let bodyY;
+    if (cfg.titlePos === 'center') bodyY = cfg.h * 0.55;
+    else bodyY = titleY + titleLines.length * titleFontSize * 1.3 + cfg.h * 0.06;
+    bodyLines.forEach((line, i) => {
+      ctx.fillText(line, padding, bodyY + i * cfg.bodySize * 1.55);
+    });
+
+    // 标签
+    if (item.tags.length) {
+      ctx.fillStyle = cfg.tagColor;
+      ctx.font = 'normal ' + cfg.tagSize + 'px "Noto Sans SC", sans-serif';
+      const tagText = item.tags.join(' ');
+      const tagLines = wrapCanvasText(ctx, tagText, contentW);
+      const tagY = cfg.h - padding - (tagLines.length * cfg.tagSize * 1.4);
+      tagLines.forEach((line, i) => {
+        ctx.fillText(line, padding, tagY + i * cfg.tagSize * 1.4);
+      });
+    }
+
+    // 水印
+    if (cfg.watermark) {
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.font = 'normal 24px "Noto Sans SC", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(cfg.watermark, cfg.w - padding, cfg.h - padding);
+    }
+
+    return canvas.toDataURL('image/png');
+  }
+
+  function updateXhsBgOptions() {
+    const type = document.getElementById('xhs-cfg-bgtype').value;
+    document.getElementById('xhs-bg-gradient-opts').classList.toggle('hidden', type !== 'gradient');
+    document.getElementById('xhs-bg-solid-opts').classList.toggle('hidden', type !== 'solid');
+    document.getElementById('xhs-bg-image-opts').classList.toggle('hidden', type !== 'image');
+  }
+
+  function uploadXhsBgImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => { xhsBgImage = img; renderXhsPreview(); };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function renderXhsPreview() {
+    updateXhsBgOptions();
+    const canvas = document.getElementById('xhs-preview-canvas');
+    const empty = document.getElementById('xhs-preview-empty');
+    const idxEl = document.getElementById('xhs-preview-index');
+    if (!canvas) return;
+    if (!xhsGeneratedImages.length) {
+      empty.classList.remove('hidden');
+      idxEl.textContent = '0 / 0';
+      return;
+    }
+    empty.classList.add('hidden');
+    if (xhsCurrentIndex >= xhsGeneratedImages.length) xhsCurrentIndex = 0;
+    const item = xhsGeneratedImages[xhsCurrentIndex];
+    const cfg = getXhsConfig();
+    drawXhsImage(canvas, item, cfg);
+    idxEl.textContent = (xhsCurrentIndex + 1) + ' / ' + xhsGeneratedImages.length;
+  }
+
+  function generateXhsImages() {
+    const raw = document.getElementById('xhs-text-input').value.trim();
+    const items = parseXhsTexts(raw);
+    document.getElementById('xhs-parse-count').textContent = items.length;
+    if (!items.length) { toast('未识别到文案，请按格式输入'); return; }
+    xhsGeneratedImages = items;
+    xhsCurrentIndex = 0;
+    const canvas = document.getElementById('xhs-preview-canvas');
+    const cfg = getXhsConfig();
+    xhsGeneratedImages.forEach(item => {
+      item.dataUrl = drawXhsImage(document.createElement('canvas'), item, cfg);
+    });
+    document.getElementById('xhs-gen-count').textContent = xhsGeneratedImages.length;
+    renderXhsPreview();
+    toast('已生成 ' + items.length + ' 张小红书图文');
+  }
+
+  function prevXhsImage() {
+    if (!xhsGeneratedImages.length) return;
+    xhsCurrentIndex = (xhsCurrentIndex - 1 + xhsGeneratedImages.length) % xhsGeneratedImages.length;
+    renderXhsPreview();
+  }
+
+  function nextXhsImage() {
+    if (!xhsGeneratedImages.length) return;
+    xhsCurrentIndex = (xhsCurrentIndex + 1) % xhsGeneratedImages.length;
+    renderXhsPreview();
+  }
+
+  function deleteCurrentXhsImage() {
+    if (!xhsGeneratedImages.length) return;
+    if (!confirm('确定删除当前图文？')) return;
+    xhsGeneratedImages.splice(xhsCurrentIndex, 1);
+    if (xhsCurrentIndex >= xhsGeneratedImages.length) xhsCurrentIndex = Math.max(0, xhsGeneratedImages.length - 1);
+    document.getElementById('xhs-gen-count').textContent = xhsGeneratedImages.length;
+    renderXhsPreview();
+  }
+
+  function downloadCurrentXhsImage() {
+    if (!xhsGeneratedImages.length || !xhsGeneratedImages[xhsCurrentIndex]) { toast('请先生成图文'); return; }
+    const item = xhsGeneratedImages[xhsCurrentIndex];
+    const a = document.createElement('a');
+    a.href = item.dataUrl;
+    a.download = 'xhs_' + (xhsCurrentIndex + 1) + '_' + dateStr() + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  function downloadAllXhsImages() {
+    if (!xhsGeneratedImages.length) { toast('请先生成图文'); return; }
+    if (typeof JSZip === 'undefined') {
+      // 兜底：逐个下载
+      xhsGeneratedImages.forEach((item, i) => {
+        const a = document.createElement('a');
+        a.href = item.dataUrl;
+        a.download = 'xhs_' + (i + 1) + '_' + dateStr() + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+      toast('开始逐张下载');
+      return;
+    }
+    const zip = new JSZip();
+    const folder = zip.folder('xhs_images_' + dateStr());
+    xhsGeneratedImages.forEach((item, i) => {
+      const base64 = item.dataUrl.split(',')[1];
+      folder.file('xhs_' + (i + 1) + '.png', base64, { base64: true });
+    });
+    zip.generateAsync({ type: 'blob' }).then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'xhs_images_' + dateStr() + '.zip';
+      document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
+      toast('打包下载已开始');
+    });
   }
 
   // Library
@@ -1686,6 +2502,18 @@
     renderTemplates,
     renderLibrary,
     renderDrafts,
+    generateCovers,
+    deleteCover,
+    renderCovers,
+    exportCovers,
+    generateXhsImages,
+    renderXhsPreview,
+    prevXhsImage,
+    nextXhsImage,
+    deleteCurrentXhsImage,
+    downloadCurrentXhsImage,
+    downloadAllXhsImages,
+    uploadXhsBgImage,
     saveBackendConfig,
     syncFromBackend,
     loadBackendConfig
